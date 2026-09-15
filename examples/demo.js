@@ -144,6 +144,10 @@ function display(result) {
     $('scan-status').textContent = `Code identified · ${result.frames} frame(s) of evidence. Hold steady.`;
     return false;
   }
+  if (result.kind === 'partial') {
+    $('scan-status').textContent = `Older Prism code identified · ${result.recovered}/${result.needed} layers. Hold steady.`;
+    return false;
+  }
   if (result.kind === 'encrypted') {
     locked = result;
     $('unlock').hidden = false;
@@ -157,7 +161,7 @@ function display(result) {
   $('copy').hidden = false;
   $('unlock').hidden = true;
   $('scan-status').textContent =
-    `Message recovered · ${Math.round(result.ms)} ms · ${result.frames} frame(s)`;
+    `Message recovered · ${Math.round(result.ms)} ms · ${Number.isInteger(result.frames) ? result.frames : 1} frame(s)`;
   return true;
 }
 
@@ -271,6 +275,7 @@ $('start').onclick = async () => {
     }
     stream = acquired;
     $('video').srcObject = stream;
+    $('video').hidden = false;
     await $('video').play();
     if (token !== cameraToken) return;
     $('video').hidden = false;
@@ -302,11 +307,16 @@ $('start').onclick = async () => {
     let lastTime = -1, captured = 0;
     const schedule = () => {
       if (token !== cameraToken || !stream) return;
-      if (typeof $('video').requestVideoFrameCallback === 'function')
+      if (typeof $('video').requestVideoFrameCallback === 'function') {
         frameCallback = $('video').requestVideoFrameCallback(tick);
-      else scanTimer = setTimeout(tick, 40);
+        // Some mobile browsers suspend presentation callbacks when the preview
+        // is off-screen. Keep capture alive, still checking for a fresh frame.
+        scanTimer = setTimeout(tick, 250);
+      } else scanTimer = setTimeout(tick, 40);
     };
     const tick = async (_now, metadata) => {
+      clearTimeout(scanTimer);
+      if (frameCallback !== null) $('video').cancelVideoFrameCallback?.(frameCallback);
       frameCallback = null;
       if (token !== cameraToken || !stream) return;
       const v = $('video');
@@ -325,7 +335,7 @@ $('start').onclick = async () => {
       const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
         snapshot = new Uint8ClampedArray(input.data);
       try {
-        const result = await decode(input, true, captured, deep ? 2200 : 250);
+        const result = await decode(input, true, captured, 2200);
         if (token !== cameraToken) return;
         if (display(result)) {
           $('photo').width = canvas.width;

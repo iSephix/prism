@@ -65,7 +65,7 @@ function host(frameCallbacks = true, hardware = true) {
   return { $, callbacks, timers, workers, frame, track, constraints, prints: () => prints };
 }
 
-test('camera schedules fresh frames after completion, skips duplicates, and alternates bounded searches', async () => {
+test('camera schedules fresh frames after completion and gives every resolution a full recovery budget', async () => {
   const h = host();
   await h.$('start').onclick();
   const worker = h.workers[0];
@@ -74,7 +74,7 @@ test('camera schedules fresh frames after completion, skips duplicates, and alte
     assert.equal(h.callbacks.size, 0, 'No queued frame while the worker is busy');
     const request = worker.messages.at(-1);
     assert.equal(request.options.frameId, frame);
-    assert.equal(request.options.maxTimeMs, frame === 6 ? 2200 : 250);
+    assert.equal(request.options.maxTimeMs, 2200);
     assert.equal(request.image.width, frame === 6 ? 1800 : 1120);
     worker.reply({ kind: 'none' }); await pending;
     const count = worker.messages.length;
@@ -88,6 +88,43 @@ test('camera schedules fresh frames after completion, skips duplicates, and alte
   assert.equal(h.callbacks.size, 0);
   assert.equal(h.timers.size, 0);
   assert.equal(h.$('scan-status').textContent, 'Camera stopped.');
+});
+
+test('camera continues scanning when presentation callbacks stall, without queuing duplicate captures', async () => {
+  const h = host(); await h.$('start').onclick();
+  const worker = h.workers[0];
+  h.$('video').currentTime = 1;
+  const [id, fallback] = [...h.timers].find(([, t]) => t.ms === 250);
+  h.timers.delete(id);
+  const pending = fallback.fn();
+  assert.equal(h.callbacks.size, 0, 'The presentation callback is cancelled while the worker owns the frame');
+  assert.equal(worker.messages.at(-1).options.frameId, 1);
+  assert.equal([...h.timers.values()].some(t => t.ms === 250), false);
+  worker.reply({ kind: 'none' }); await pending;
+  assert.equal(h.callbacks.size, 1);
+  const count = worker.messages.length;
+  await h.frame(1);
+  assert.equal(worker.messages.length, count, 'The timer and presentation callback cannot fuse one frame twice');
+  const next = h.frame(2);
+  worker.reply({ kind: 'prism19', text: 'Previously printed code', ms: 10, frames: 1 }); await next;
+  assert.equal(h.$('result').textContent, 'Previously printed code');
+  assert.equal(h.track.readyState, 'ended');
+  assert.equal(h.callbacks.size, 0);
+  assert.equal(h.timers.size, 0);
+});
+
+test('older partial Prism layers keep the camera running until their complete payload is recovered', async () => {
+  const h = host(); await h.$('start').onclick();
+  const worker = h.workers[0];
+  let pending = h.frame(1);
+  worker.reply({ kind: 'partial', recovered: 1, needed: 3, frames: [{}] }); await pending;
+  assert.equal(h.track.readyState, 'live');
+  assert.equal(h.$('result').hidden, true);
+  assert.match(h.$('scan-status').textContent, /1\/3 layers/);
+  pending = h.frame(2);
+  worker.reply({ kind: 'prism', text: 'Legacy print', frames: [{}, {}, {}], ms: 10 }); await pending;
+  assert.equal(h.$('result').textContent, 'Legacy print');
+  assert.equal(h.track.readyState, 'ended');
 });
 
 test('camera hardware controls preserve capture constraints and print uses physical width', async () => {

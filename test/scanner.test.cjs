@@ -111,6 +111,30 @@ test('time budgets stop after a slow locator and report no unverified payload', 
   assert.equal(result.diagnostics.locateMs, 11);
 });
 
+test('a recognized damaged code reaches recovery before redundant finder searches exhaust a camera frame', () => {
+  const text = 'Equation rescue: entire block is gone.', code = P.encode(text);
+  const image = erase(P.toRGBA(code, 16), code,
+    Array.from({ length: 19 }, (_, j) => code.layout.slots[76 + j * code.blocks]), 16);
+  const gray = new Uint8ClampedArray(image.data.length);
+  for (let i = 0; i < gray.length; i += 4) {
+    gray[i] = gray[i + 1] = gray[i + 2] = .299 * image.data[i] + .587 * image.data[i + 1] + .114 * image.data[i + 2];
+    gray[i + 3] = 255;
+  }
+  const locations = require('../vendor/jsqr-locator.js')(gray, image.width, image.height);
+  assert.ok(locations.length);
+  let clock = 0, calls = 0;
+  const c = vm.createContext({ TextEncoder, TextDecoder, performance: { now: () => clock } });
+  for (const file of ['crc32.js', 'gf19.js', 'alphabet19.js', 'codec.js'])
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../src', file), 'utf8'), c);
+  const result = c.Prism19Core.scan(image, {
+    maxTimeMs: 250, diagnostics: true, soft: false, equations: true, spatial: false, refine: false,
+    locate: () => { calls++; clock += 100; return locations; }
+  });
+  assert.equal(result.text, text, 'Recovery must not be starved by searching the same code in more RGB planes');
+  assert.equal(result.repaired, code.k);
+  assert.equal(calls, 1);
+});
+
 test('new scan controls validate their types and bounds', () => {
   const image = P.toRGBA(P.encode('Options'));
   for (const maxTimeMs of [0, 9, 10001, NaN, Infinity, '250'])

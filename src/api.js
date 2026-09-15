@@ -7,7 +7,7 @@
   } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Locator);
 })(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.3.0',
+  const version = '0.3.1',
     wireVersion = 3,
     supportedWireVersions = Object.freeze([2, 3]),
     maxTextBytes = 8554,

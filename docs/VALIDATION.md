@@ -45,3 +45,5 @@ The current simulator covers limited perspective, blur, noise, desaturation and 
 ## Running the checks
 
 `npm test` is the deterministic default gate. `npm run test:reference` verifies the vectors in Python. `npm run test:optical` runs the longer optical gate. `npm run check` checks package contents, attribution, source syntax, bundle consistency and the frozen vectors. CI configures these checks on current Node 22/24 runners; local release reports identify the environment actually exercised. A configured workflow is not a claim that GitHub has run it.
+
+The 0.3.1 camera regression checks cover a recognized code with an erased Reed–Solomon block under a slow-locator clock, stalled video presentation callbacks, and incomplete legacy layer results. These reproduce software failure modes; they do not substitute for testing the user’s particular camera and printed sample.

@@ -1,4 +1,4 @@
-/*! Prism 19 0.3.0 | Apache-2.0 | See LICENSE and NOTICE. */
+/*! Prism 19 0.3.1 | Apache-2.0 | See LICENSE and NOTICE. */
 (function(){
 const module=undefined,exports=undefined,define=undefined;
 
@@ -1155,6 +1155,7 @@ const module=undefined,exports=undefined,define=undefined;
       locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0 };
     const hard = { soft: false, equations: false }, advanced = options.soft !== false ||
       options.equations !== false || options.spatial !== false || options.refine !== false;
+    const config = { ...options, deadline };
     const state = sessions.get(options.session), poses = [];
     let partial = null, fusedThisFrame = false;
     const expired = () => performance.now() >= deadline;
@@ -1218,9 +1219,12 @@ const module=undefined,exports=undefined,define=undefined;
         previous.locator === (options.locatorKey || options.locate) && Date.now() - previous.time < 1000) {
       const result = fast(previous.location, true);
       if (result) return finish(result);
+      const recovered = recoverPoses(poses);
+      if (recovered) return finish(recovered);
     }
-    // Keep the complete ordinary hard path before advanced hypotheses. Retain the
-    // observations instead of recursively detecting and sampling every pose twice.
+    // Try every hard candidate in a channel, then recover its observations before
+    // paying for another finder search. Otherwise short camera budgets can keep
+    // recognizing the header without ever reaching error correction or fusion.
     for (const channel of ['gray', 0, 2]) {
       if (expired()) return finish();
       const pixels = new Uint8ClampedArray(image.data.length);
@@ -1231,14 +1235,15 @@ const module=undefined,exports=undefined,define=undefined;
       }
       stats.locateCalls++;
       const locations = measured('locateMs', () => options.locate(pixels, image.width, image.height));
+      const firstPose = poses.length;
       for (const location of locations.slice(0, 2)) {
         if (expired()) return finish();
         const result = fast(location);
         if (result) return finish(result);
       }
+      const recovered = recoverPoses(poses.slice(firstPose));
+      if (recovered) return finish(recovered);
     }
-    if (!advanced && !options.session) return finish();
-    const config = { ...options, deadline };
     function recover(obs, location, base, h, allowFusion, path) {
       if (obs.separation < 70 || expired()) return null;
       base = base || score(obs);
@@ -1266,22 +1271,26 @@ const module=undefined,exports=undefined,define=undefined;
       }
       return null;
     }
-    for (const pose of poses) {
-      if (expired()) return finish();
-      let result = recover(pose.obs, pose.location, pose.scores, pose.h, true);
-      if (result) { stats.tracked = pose.tracked; return finish(result); }
-      if (advanced) {
-        const robust = calibrate(pose.obs, true);
-        result = recover(robust, pose.location, null, null, false, 'robust pilot calibration');
-        if (result) { stats.tracked = pose.tracked; return finish(result); }
+    function recoverPoses(candidates) {
+      if (!advanced && !options.session) return null;
+      for (const pose of candidates) {
+        if (expired()) return null;
+        let result = recover(pose.obs, pose.location, pose.scores, pose.h, true);
+        if (result) { stats.tracked = pose.tracked; return result; }
+        if (advanced) {
+          const robust = calibrate(pose.obs, true);
+          result = recover(robust, pose.location, null, null, false, 'robust pilot calibration');
+          if (result) { stats.tracked = pose.tracked; return result; }
+        }
+        if (options.refine !== false) for (const shift of [[.1, 0], [-.1, 0], [0, .1], [0, -.1]]) {
+          if (expired()) return null;
+          const obs = observe(pose.location, shift);
+          if (!obs) continue;
+          result = recover(obs, pose.location, null, null, false);
+          if (result) { stats.tracked = pose.tracked; return result; }
+        }
       }
-      if (options.refine !== false) for (const shift of [[.1, 0], [-.1, 0], [0, .1], [0, -.1]]) {
-        if (expired()) return finish();
-        const obs = observe(pose.location, shift);
-        if (!obs) continue;
-        result = recover(obs, pose.location, null, null, false);
-        if (result) { stats.tracked = pose.tracked; return finish(result); }
-      }
+      return null;
     }
     return finish();
   }
@@ -1552,7 +1561,7 @@ const module=undefined,exports=undefined,define=undefined;
   } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Locator);
 })(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.3.0',
+  const version = '0.3.1',
     wireVersion = 3,
     supportedWireVersions = Object.freeze([2, 3]),
     maxTextBytes = 8554,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — restore camera recovery
+
+- Give every live frame the full 2200 ms recovery allowance; clean codes still return immediately. Keep 1120-pixel captures and occasional 1800-pixel attempts.
+- Recover and fuse detected poses before searching additional RGB planes, preventing repeated finder work from starving error correction.
+- Keep camera capture running if a browser suspends video presentation callbacks. Preserve fresh-frame deduplication, cancellation and the worker watchdog.
+- Let the hosted scanner reuse its original QR / Prism 4 / Prism 8 decoder; handle partial legacy layers without reporting success.
+- Add regression checks for budget starvation, stalled presentation callbacks and incomplete legacy results. Wire formats and encoded matrices are unchanged.
+
 ## 0.3.0 — larger capacity and typed content
 
 - Add optical format 3 while preserving format-2 encoding and decoding for existing messages and prints.
