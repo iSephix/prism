@@ -1,0 +1,14 @@
+Prism 19
+Copyright 2026 Prism 19 contributors.
+
+This distribution includes software derived from jsQR by Cosmo Wolfe and
+contributors, licensed under the Apache License, Version 2.0.
+Source: https://github.com/cozmo/jsQR
+
+vendor/jsqr-locator.js contains the BitMatrix, binarization, extraction and
+location modules, with a new wrapper. The algorithms are unchanged.
+See THIRD_PARTY.md and vendor/provenance.json for source and modification details.
+
+The Prism 19 implementation, specification, test vectors and documentation are
+distributed under Apache-2.0. Attribution does not imply endorsement by jsQR,
+the Apache Software Foundation, DENSO WAVE or a standards organization.

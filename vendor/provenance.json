@@ -1,0 +1,17 @@
+{
+  "name": "jsQR",
+  "license": "Apache-2.0",
+  "upstreamRepository": "https://github.com/cozmo/jsQR",
+  "upstreamCommit": "8e6a036beafa7053dd44b1b76ac578d22b1b3311",
+  "upstreamPath": "dist/jsQR.js",
+  "sourceNormalization": "UTF-8 text with LF line endings and an attribution header",
+  "sourceSHA256": "b12324cda67bd686e2f3cba339b1fbc1a4ec72f40ba597c6fe4b19dde2f28a54",
+  "derivedSHA256": "9abc11c2f1fd7d301c27c863996510528cd556aeffe8404ec5c198f372582a3e",
+  "retainedModules": [
+    0,
+    4,
+    11,
+    12
+  ],
+  "modification": "Geometry-only module extraction and UMD adapter. No algorithm changes."
+}

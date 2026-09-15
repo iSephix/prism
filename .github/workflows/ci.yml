@@ -1,0 +1,32 @@
+name: Conformance and portability
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+      - run: npm run check
+      - name: Independent format implementation
+        if: runner.os == 'Linux' && matrix.node == '24'
+        run: npm run test:reference
+      - name: Optical recovery
+        if: runner.os == 'Linux' && matrix.node == '24'
+        run: npm run test:optical
+      - name: Package contents
+        run: npm pack --ignore-scripts

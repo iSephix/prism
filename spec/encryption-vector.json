@@ -1,0 +1,9 @@
+{
+  "purpose": "TEST ONLY. Fixed salt and IV must never be used by production encryption.",
+  "generator": "Independent Python cryptography PBKDF2HMAC and AESGCM",
+  "text": "﻿Encrypted interop vector 🔐\u0000",
+  "passphrase": "Prism19 test vector only",
+  "saltHex": "000102030405060708090a0b0c0d0e0f",
+  "ivHex": "101112131415161718191a1b",
+  "envelopeHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1bb24f15c392f5c963b4c3dd3c7642263d83354daf07475e3ddf443b2b0e24b74c598e62710c5555c49e89a79be6f51c8e05"
+}

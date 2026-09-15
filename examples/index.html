@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#152237"><title>Prism 19 · Reference demo</title>
+  <link rel="stylesheet" href="style.css"><script defer src="../dist/prism19.js"></script><script defer src="demo.js"></script>
+</head>
+<body>
+  <header><a href="./">prism <strong>19</strong></a><span>Reference demo · format 2</span></header>
+  <main>
+    <div class="intro"><h1>Carry a message in color and shape.</h1><p>Generate here. Scan from another screen or a print. Everything runs on your device.</p></div>
+    <div class="workspace">
+      <section aria-labelledby="generate-title">
+        <div class="section-label">ENCODE</div><h2 id="generate-title">Make a code</h2>
+        <label for="message">Message <small id="byte-count"></small></label>
+        <textarea id="message" rows="4" spellcheck="false">A message carried by nineteen symbols.</textarea>
+        <div class="row"><div><label for="ecc">Correction</label><select id="ecc"><option>Q</option><option>H</option><option>M</option><option>L</option></select></div><div><label for="scale">Export size</label><select id="scale"><option value="12">12 px / cell</option><option value="20">20 px / cell</option><option value="8">8 px / cell</option></select></div></div>
+        <label class="check"><input type="checkbox" id="encrypt"> Encrypt with a passphrase</label>
+        <div id="password-field" hidden><label for="password">Passphrase</label><input type="password" id="password" autocomplete="new-password"><p class="note">AES-256-GCM adds 44 bytes. Use a long, unique passphrase.</p></div>
+        <p id="encode-status" class="status" role="status"></p>
+        <div id="code" aria-label="Generated Prism 19 code"></div>
+        <p id="code-meta" class="note"></p>
+        <div class="buttons"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="decode-generated" class="secondary" disabled>Read this image</button></div>
+      </section>
+      <section aria-labelledby="scan-title">
+        <div class="section-label">DECODE</div><h2 id="scan-title">Recover the message</h2>
+        <p>Keep the whole code and white margin in view. Move close enough to see the patterns.</p>
+        <div class="camera"><video id="video" playsinline muted hidden></video><canvas id="photo" hidden></canvas><div id="camera-idle">Camera is off</div></div>
+        <div class="buttons"><button id="start">Start camera</button><button id="stop" class="secondary" hidden>Stop</button><button id="upload" class="secondary">Choose image</button></div>
+        <input id="file" type="file" accept="image/*" hidden>
+        <details><summary>Decoder options</summary><label class="check"><input type="checkbox" id="soft" checked> Confidence-guided correction</label><label class="check"><input type="checkbox" id="equations" checked> Spare-cell equations</label><label class="check"><input type="checkbox" id="spatial" checked> Neighboring-cell correction</label><label class="check"><input type="checkbox" id="refine" checked> Sampling refinement</label><label class="check"><input type="checkbox" id="burst" checked> Fuse up to eight camera frames</label></details>
+        <p id="scan-status" class="status" role="status">Ready to scan</p>
+        <div id="unlock" hidden><label for="decode-password">Message passphrase</label><input id="decode-password" type="password" autocomplete="off"><button id="decrypt">Decrypt</button></div>
+        <pre id="result" hidden></pre><button id="copy" class="secondary" hidden>Copy message</button>
+        <p class="note">Live camera access needs HTTPS or localhost. On a phone, use an HTTPS host. Image files stay on the device.</p>
+      </section>
+    </div>
+    <details class="alphabet"><summary>The 19-symbol alphabet</summary><div id="alphabet"></div></details>
+  </main>
+  <footer><span>Prism 19 · open specification</span><a href="../spec/FORMAT.md">Format</a><a href="../docs/API.md">API</a><a href="../LICENSE">Apache-2.0</a><a href="../THIRD_PARTY.md">Credits</a></footer>
+  <noscript>This demo needs JavaScript.</noscript>
+</body></html>

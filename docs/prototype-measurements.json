@@ -1,0 +1,708 @@
+{
+  "protocol": "Prism 19 v2",
+  "verifiedAt": "2026-09-09T17:08:55.736Z",
+  "physicalValidation": false,
+  "jabComparison": false,
+  "checks": [
+    {
+      "name": "RS correction at 2e+s <= 19-k",
+      "cases": 320
+    },
+    {
+      "name": "Whole-packet radix, leading zeros, bounds and confidence-guided recovery beyond hard radius",
+      "softErrors": 5,
+      "hardRadius": 4
+    },
+    {
+      "name": "Erase all 19 cells of one body block",
+      "withoutEquations": "partial19",
+      "withEquations": "prism19",
+      "repairedSymbols": 11,
+      "equationsUsed": 119
+    },
+    {
+      "name": "Two complementary damaged frames; equations disabled",
+      "observations": [
+        {
+          "frame": 1,
+          "independent": "partial19",
+          "combined": "partial19",
+          "frames": 1
+        },
+        {
+          "frame": 2,
+          "independent": "partial19",
+          "combined": "prism19",
+          "frames": 2
+        }
+      ]
+    },
+    {
+      "name": "Packet CRC, unknown-version and blank-image rejection; bounded, isolated frame sessions"
+    },
+    {
+      "name": "Encrypted optical round trip; randomized envelopes; wrong-passphrase and altered-tag rejection",
+      "overheadBytes": 44
+    },
+    {
+      "name": "Actual browser-worker imports, messages and automatic format detection",
+      "formats": [
+        "qr",
+        "p4",
+        "p8",
+        "p19",
+        "encrypted p19"
+      ]
+    },
+    {
+      "name": "JavaScript syntax, HTML IDs and local asset references; no browser UI automation performed"
+    }
+  ],
+  "optical": [
+    {
+      "ecc": "L",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 51,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "L",
+      "bytes": 27,
+      "grid": 25,
+      "exact": true,
+      "ms": 26,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "L",
+      "bytes": 53,
+      "grid": 25,
+      "exact": true,
+      "ms": 27,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "L",
+      "bytes": 255,
+      "grid": 33,
+      "exact": true,
+      "ms": 53,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "L",
+      "bytes": 1200,
+      "grid": 61,
+      "exact": true,
+      "ms": 116,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "M",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 25,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "M",
+      "bytes": 27,
+      "grid": 25,
+      "exact": true,
+      "ms": 18,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "M",
+      "bytes": 53,
+      "grid": 25,
+      "exact": true,
+      "ms": 15,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "M",
+      "bytes": 255,
+      "grid": 37,
+      "exact": true,
+      "ms": 36,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "M",
+      "bytes": 1200,
+      "grid": 65,
+      "exact": true,
+      "ms": 126,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "Q",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 11,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "Q",
+      "bytes": 27,
+      "grid": 25,
+      "exact": true,
+      "ms": 13,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "Q",
+      "bytes": 53,
+      "grid": 25,
+      "exact": true,
+      "ms": 14,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "Q",
+      "bytes": 255,
+      "grid": 37,
+      "exact": true,
+      "ms": 32,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "Q",
+      "bytes": 1200,
+      "grid": 69,
+      "exact": true,
+      "ms": 145,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "H",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 13,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "H",
+      "bytes": 27,
+      "grid": 25,
+      "exact": true,
+      "ms": 14,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "H",
+      "bytes": 53,
+      "grid": 25,
+      "exact": true,
+      "ms": 14,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "H",
+      "bytes": 255,
+      "grid": 41,
+      "exact": true,
+      "ms": 41,
+      "decoder": "hard RS"
+    },
+    {
+      "ecc": "H",
+      "bytes": 1200,
+      "grid": 73,
+      "exact": true,
+      "ms": 167,
+      "decoder": "hard RS"
+    }
+  ],
+  "synthetic": [
+    {
+      "profile": "Moderate camera",
+      "mode": "qr",
+      "variant": "qr",
+      "label": "Standard QR",
+      "grid": 61,
+      "area": 4761,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        134.8530550000014,
+        132.3745199999994,
+        135.43389600000228
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Moderate camera",
+        "pixels": 400,
+        "blur": 0.4,
+        "noise": 5,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "qrLevel": "Q"
+      },
+      "meanMs": 134.22049033333437
+    },
+    {
+      "profile": "Moderate camera",
+      "mode": "p4",
+      "variant": "p4",
+      "label": "Prism 4",
+      "grid": 49,
+      "area": 3591,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        250.1156489999994,
+        238.0998989999971,
+        233.81095200000345
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Moderate camera",
+        "pixels": 400,
+        "blur": 0.4,
+        "noise": 5,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "qrLevel": "Q"
+      },
+      "meanMs": 240.67549999999997
+    },
+    {
+      "profile": "Moderate camera",
+      "mode": "p8",
+      "variant": "p8",
+      "label": "Prism 8",
+      "grid": 41,
+      "area": 2695,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        217.45832000000155,
+        238.12272099999973,
+        213.37801899999613
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Moderate camera",
+        "pixels": 400,
+        "blur": 0.4,
+        "noise": 5,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "qrLevel": "Q"
+      },
+      "meanMs": 222.98635333333246
+    },
+    {
+      "profile": "Moderate camera",
+      "mode": "p19",
+      "variant": "p19-hard",
+      "label": "Prism 19 · hard only",
+      "grid": 33,
+      "area": 1681,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        228.10424699999567,
+        224.28963099999964,
+        243.96682999999757
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Moderate camera",
+        "pixels": 400,
+        "blur": 0.4,
+        "noise": 5,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "field": 19,
+        "k": 11,
+        "n": 19,
+        "repairEquations": 149
+      },
+      "meanMs": 232.12023599999762
+    },
+    {
+      "profile": "Moderate camera",
+      "mode": "p19",
+      "variant": "p19",
+      "label": "Prism 19",
+      "grid": 33,
+      "area": 1681,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        229.9797749999998,
+        216.42157700000098,
+        210.133173000002
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Moderate camera",
+        "pixels": 400,
+        "blur": 0.4,
+        "noise": 5,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "field": 19,
+        "k": 11,
+        "n": 19,
+        "repairEquations": 149
+      },
+      "meanMs": 218.84484166666758
+    },
+    {
+      "profile": "Small, blurred camera",
+      "mode": "qr",
+      "variant": "qr",
+      "label": "Standard QR",
+      "grid": 61,
+      "area": 4761,
+      "passes": 2,
+      "trials": 3,
+      "times": [
+        64.59524999999849,
+        61.912830999994185,
+        103.84435099999973
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Small, blurred camera",
+        "pixels": 220,
+        "blur": 0.8,
+        "noise": 8,
+        "perspective": 0.2,
+        "colorLoss": 0.2,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        false
+      ],
+      "coding": {
+        "qrLevel": "Q"
+      },
+      "meanMs": 76.78414399999747
+    },
+    {
+      "profile": "Small, blurred camera",
+      "mode": "p4",
+      "variant": "p4",
+      "label": "Prism 4",
+      "grid": 49,
+      "area": 3591,
+      "passes": 2,
+      "trials": 3,
+      "times": [
+        211.28194000000076,
+        237.33398999999918,
+        715.6002000000008
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Small, blurred camera",
+        "pixels": 220,
+        "blur": 0.8,
+        "noise": 8,
+        "perspective": 0.2,
+        "colorLoss": 0.2,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        false
+      ],
+      "coding": {
+        "qrLevel": "Q"
+      },
+      "meanMs": 388.07204333333357
+    },
+    {
+      "profile": "Small, blurred camera",
+      "mode": "p8",
+      "variant": "p8",
+      "label": "Prism 8",
+      "grid": 41,
+      "area": 2695,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        204.03550300000643,
+        215.38804900000105,
+        215.56018900001072
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Small, blurred camera",
+        "pixels": 220,
+        "blur": 0.8,
+        "noise": 8,
+        "perspective": 0.2,
+        "colorLoss": 0.2,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "qrLevel": "Q"
+      },
+      "meanMs": 211.66124700000606
+    },
+    {
+      "profile": "Small, blurred camera",
+      "mode": "p19",
+      "variant": "p19-hard",
+      "label": "Prism 19 · hard only",
+      "grid": 33,
+      "area": 1681,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        136.6727450000035,
+        170.48553799999354,
+        126.0532830000011
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Small, blurred camera",
+        "pixels": 220,
+        "blur": 0.8,
+        "noise": 8,
+        "perspective": 0.2,
+        "colorLoss": 0.2,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "field": 19,
+        "k": 11,
+        "n": 19,
+        "repairEquations": 149
+      },
+      "meanMs": 144.4038553333327
+    },
+    {
+      "profile": "Small, blurred camera",
+      "mode": "p19",
+      "variant": "p19",
+      "label": "Prism 19",
+      "grid": 33,
+      "area": 1681,
+      "passes": 3,
+      "trials": 3,
+      "times": [
+        126.39218299998902,
+        162.85091699998884,
+        126.55523300000641
+      ],
+      "errors": 0,
+      "settings": {
+        "name": "Small, blurred camera",
+        "pixels": 220,
+        "blur": 0.8,
+        "noise": 8,
+        "perspective": 0.2,
+        "colorLoss": 0.2,
+        "cover": 0
+      },
+      "frameBudget": 1,
+      "framesUsed": [
+        1,
+        1,
+        1
+      ],
+      "recovered": [
+        true,
+        true,
+        true
+      ],
+      "coding": {
+        "field": 19,
+        "k": 11,
+        "n": 19,
+        "repairEquations": 149
+      },
+      "meanMs": 138.59944433332808
+    }
+  ],
+  "alphabet": {
+    "version": 1,
+    "method": "Multi-start max-min packing; 35 color/pattern candidates, 4 synthetic channel profiles; frozen symbol IDs",
+    "minMeanSquaredDistance": 819.0882683132951,
+    "meanNearestDistance": 1291.3613862122725,
+    "selected": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      10,
+      11,
+      20,
+      21,
+      23,
+      24,
+      27,
+      30,
+      32,
+      33,
+      34
+    ],
+    "optimizerSelection": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      10,
+      11,
+      20,
+      21,
+      23,
+      24,
+      27,
+      30,
+      32,
+      33,
+      34
+    ],
+    "profiles": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0.075,
+        0.2,
+        0.1
+      ],
+      [
+        0.12,
+        0.45,
+        0.15
+      ],
+      [
+        0.08,
+        0.65,
+        0.25
+      ]
+    ],
+    "limitations": "Synthetic heuristic. No proof of optimality or print-camera advantage; body cells need enough pixels to resolve the pattern."
+  }
+}

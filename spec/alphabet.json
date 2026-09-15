@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "method": "Multi-start max-min packing; 35 color/pattern candidates, 4 synthetic channel profiles; frozen symbol IDs",
+  "minMeanSquaredDistance": 819.0882683132951,
+  "meanNearestDistance": 1291.3613862122725,
+  "selected": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    8,
+    9,
+    10,
+    11,
+    20,
+    21,
+    23,
+    24,
+    27,
+    30,
+    32,
+    33,
+    34
+  ],
+  "optimizerSelection": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    8,
+    9,
+    10,
+    11,
+    20,
+    21,
+    23,
+    24,
+    27,
+    30,
+    32,
+    33,
+    34
+  ],
+  "profiles": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0.075,
+      0.2,
+      0.1
+    ],
+    [
+      0.12,
+      0.45,
+      0.15
+    ],
+    [
+      0.08,
+      0.65,
+      0.25
+    ]
+  ],
+  "limitations": "Synthetic heuristic. No proof of optimality or print-camera advantage; body cells need enough pixels to resolve the pattern."
+}

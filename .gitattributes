@@ -1,0 +1,5 @@
+# Keep protocol fixtures, generated bundles and provenance hashes portable.
+* text=auto eol=lf
+*.png -text
+*.tgz -text
+*.zip -text

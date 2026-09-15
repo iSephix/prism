@@ -1,0 +1,101 @@
+{
+  "name": "prism19",
+  "version": "0.1.0",
+  "description": "An open 19-symbol optical code with GF(19) recovery, a camera decoder and a portable format specification.",
+  "license": "Apache-2.0",
+  "main": "./index.cjs",
+  "module": "./index.mjs",
+  "browser": "./browser.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "browser": {
+        "types": "./index.d.mts",
+        "default": "./browser.mjs"
+      },
+      "import": {
+        "types": "./index.d.mts",
+        "default": "./index.mjs"
+      },
+      "require": {
+        "types": "./index.d.cts",
+        "default": "./index.cjs"
+      },
+      "default": "./index.cjs"
+    },
+    "./browser": {
+      "types": "./index.d.mts",
+      "default": "./browser.mjs"
+    },
+    "./core": {
+      "browser": {
+        "types": "./index.d.mts",
+        "default": "./browser-core.mjs"
+      },
+      "import": {
+        "types": "./index.d.mts",
+        "default": "./index.mjs"
+      },
+      "require": {
+        "types": "./index.d.cts",
+        "default": "./index.cjs"
+      }
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "prism19": "./bin/prism19.cjs"
+  },
+  "files": [
+    "index.cjs",
+    "index.mjs",
+    "index.d.ts",
+    "browser.mjs",
+    "browser-core.mjs",
+    "src/",
+    "dist/",
+    "bin/",
+    "vendor/jsqr-locator.js",
+    "vendor/LICENSE-jsQR.txt",
+    "vendor/provenance.json",
+    "spec/",
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY.md",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "index.d.mts",
+    "index.d.cts",
+    "docs/",
+    "CONTRIBUTING.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "barcode",
+    "optical-code",
+    "base19",
+    "reed-solomon",
+    "computer-vision"
+  ],
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node scripts/test.cjs",
+    "test:reference": "python3 spec/reference.py --verify spec/vectors.json",
+    "test:optical": "node test/optical.cjs",
+    "check": "node scripts/check-release.cjs",
+    "demo": "node scripts/serve.cjs",
+    "prepack": "node scripts/check-release.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iSephix/prism.git"
+  },
+  "homepage": "https://github.com/iSephix/prism#readme",
+  "bugs": {
+    "url": "https://github.com/iSephix/prism/issues"
+  }
+}
