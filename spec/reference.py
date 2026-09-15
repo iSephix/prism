@@ -113,16 +113,29 @@ def equation(e, blocks, k):
     return [(block * k + column, 1 + ((next(rng) * 18) >> 32)) for block in selected]
 
 
-def header(payload, k, encrypted):
-    prefix = b'PN' + bytes([2, k, int(encrypted), 1]) + len(payload).to_bytes(2, 'big') + zlib.crc32(payload).to_bytes(4, 'big')
+def header(payload, k, flags, wire_version=2):
+    prefix = b'PN' + bytes([wire_version, k, flags, 1]) + len(payload).to_bytes(2, 'big') + zlib.crc32(payload).to_bytes(4, 'big')
     return prefix + zlib.crc32(prefix).to_bytes(4, 'big')
 
 
-def encode(text, ecc='Q', envelope=None):
-    payload = text.encode('utf-8') if envelope is None else bytes(envelope)
-    if ecc not in LEVELS or not (1 <= len(payload) <= 1200 if envelope is None else 45 <= len(payload) <= 1244):
-        raise ValueError('Unsupported payload or correction level')
-    k, encrypted = LEVELS[ecc], envelope is not None
+def capacity(k, n=145):
+    slots = layout(n)[2]
+    field_digits = ((len(slots) - 76) // 19) * k
+    return (pow(19, field_digits).bit_length() - 1) // 8
+
+
+def encode(text, ecc='Q', envelope=None, *, raw_payload=None, flags=None, wire_version=None):
+    payload = bytes(raw_payload) if raw_payload is not None else text.encode('utf-8') if envelope is None else bytes(envelope)
+    flags = (int(envelope is not None) if flags is None else flags)
+    encrypted, typed = bool(flags & 1), bool(flags & 2)
+    legacy_limit = 1244 if encrypted else 1200
+    wire_version = wire_version or (3 if typed or len(payload) > legacy_limit else 2)
+    if ecc not in LEVELS or wire_version not in (2, 3) or flags not in range(2 if wire_version == 2 else 4):
+        raise ValueError('Unsupported format, flags or correction level')
+    k = LEVELS[ecc]
+    minimum = (44 if encrypted else 0) + (4 if typed else 1)
+    if not minimum <= len(payload) <= (legacy_limit if wire_version == 2 else capacity(k)):
+        raise ValueError('Unsupported payload length')
     digits = radix(payload)
     blocks = (len(digits) + k - 1) // k
     padded = digits + [0] * (blocks * k - len(digits))
@@ -138,7 +151,7 @@ def encode(text, ecc='Q', envelope=None):
 
     for i, cell in enumerate(pilots):
         set_cell(cell, i % 19)
-    raw_header = header(payload, k, encrypted)
+    raw_header = header(payload, k, flags, wire_version)
     header_digits = radix(raw_header, 36)
     header_words = [rs(header_digits[i:i + 9]) for i in range(0, 36, 9)]
     for j in range(19):
@@ -174,10 +187,12 @@ def decode_pristine(matrix):
             raise ValueError('Header parity mismatch')
         header_digits.extend(word[:9])
     raw = unradix(header_digits, 16)
-    if raw[:3] != b'PN\x02' or raw[3] not in LEVELS.values() or raw[4] not in (0, 1) or raw[5] != 1 or zlib.crc32(raw[:12]) != int.from_bytes(raw[12:], 'big'):
+    if raw[:2] != b'PN' or raw[2] not in (2, 3) or raw[3] not in LEVELS.values() or raw[4] not in range(2 if raw[2] == 2 else 4) or raw[5] != 1 or zlib.crc32(raw[:12]) != int.from_bytes(raw[12:], 'big'):
         raise ValueError('Header invalid')
-    k, encrypted, length = raw[3], raw[4] == 1, int.from_bytes(raw[6:8], 'big')
-    if not (45 <= length <= 1244 if encrypted else 1 <= length <= 1200):
+    k, encrypted, typed, length = raw[3], bool(raw[4] & 1), bool(raw[4] & 2), int.from_bytes(raw[6:8], 'big')
+    minimum = (44 if encrypted else 0) + (4 if typed else 1)
+    maximum = (1244 if encrypted else 1200) if raw[2] == 2 else capacity(k, n)
+    if not minimum <= length <= maximum:
         raise ValueError('Length invalid')
     count, digits = radix_length(length), []
     blocks = (count + k - 1) // k
@@ -196,7 +211,7 @@ def decode_pristine(matrix):
     for e, cell in enumerate(slots[76 + blocks * 19:]):
         if get(cell) != sum(digits[i] * coefficient for i, coefficient in equation(e, blocks, k)) % 19:
             raise ValueError('Repair equation mismatch')
-    return payload if encrypted else payload.decode('utf-8')
+    return payload if encrypted or typed else payload.decode('utf-8')
 
 
 def main():
@@ -210,15 +225,17 @@ def main():
             vectors = json.load(file)['vectors']
         for vector in vectors:
             envelope = bytes.fromhex(vector['envelopeHex']) if vector.get('encrypted') else None
-            actual = encode(vector['text'], vector['ecc'], envelope)
+            actual = encode(vector['text'], vector['ecc'], envelope,
+                            raw_payload=bytes.fromhex(vector['payloadHex']) if vector.get('typed') else None,
+                            flags=vector.get('flags'), wire_version=vector.get('wireVersion'))
             for key in ['matrix', 'headerHex', 'payloadHex', 'n', 'k', 'blocks', 'repairCount']:
                 if actual[key] != vector[key]:
                     raise AssertionError(f"{vector['name']}: mismatch in {key}")
-            if decode_pristine(vector['matrix']) != (envelope if envelope is not None else vector['text']):
+            if decode_pristine(vector['matrix']) != (bytes.fromhex(vector['payloadHex']) if vector.get('typed') else envelope if envelope is not None else vector['text']):
                 raise AssertionError('Independent matrix decoding failed')
         print(f'PASS: {len(vectors)} independent Python encoder/matrix-reader vectors.')
     elif args.text is not None:
-        print(json.dumps({'format': 'prism19-matrix', 'wireVersion': 2, 'matrix': encode(args.text, args.ecc)['matrix']}))
+        print(json.dumps({'format': 'prism19-matrix', 'wireVersion': 3 if len(args.text.encode('utf-8')) > 1200 else 2, 'matrix': encode(args.text, args.ecc)['matrix']}))
     else:
         parser.print_help()
 

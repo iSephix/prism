@@ -6,9 +6,9 @@ Prism 19 uses 19 optical symbols, Reed–Solomon correction over GF(19), and spa
 
 It requires a Prism 19-compatible scanner. Existing QR-only camera readers cannot decode this format.
 
-This is the **0.2.0 reference implementation** of **Optical Format 2, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
+This is the **0.3.0 reference implementation** of **Optical Formats 2 and 3, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
 
-Version 0.2 improves damaged-code recovery, speeds up repeated camera scans and raster exports, and adds camera time budgets, optional light/zoom controls and printing at a chosen physical width. Existing format-2 codes and printed symbols remain compatible. See the [paired benchmarks](docs/BENCHMARKS.md) for measured changes and their limits.
+Version 0.3 unlocks up to **8,554 text bytes** or **8,550 raw file bytes** at L correction, and adds typed images, audio, JSON, calculations, links and contacts. All types can be encrypted. Existing format-2 codes remain readable; new content uses format 3. The default Q level holds 6,273 body bytes. See [payloads and capacity](docs/PAYLOADS.md), the [format-3 specification](spec/FORMAT3.md), and the earlier [decoder benchmarks](docs/BENCHMARKS.md).
 
 ## Try it
 
@@ -20,7 +20,7 @@ cd prism
 npm run demo
 ```
 
-Open **http://localhost:8080/examples/**. Generate a code, export PNG/SVG, print at a chosen width, upload a photo or use the camera. Light and zoom controls appear when the camera supports them. Phone cameras need an HTTPS host. To host the demo statically, serve the release directory and open `examples/`; it needs no backend, database, account or remote API.
+Open **http://localhost:8080/examples/**. Choose text, a calculation, structured data or a file; generate a code, export PNG/SVG, print at a chosen width, upload a photo or use the camera. Image fitting and small image/audio samples make file transport easy to try. Light and zoom controls appear when the camera supports them. Phone cameras need an HTTPS host. To host the demo statically, serve the release directory and open `examples/`; it needs no backend, database, account or remote API.
 
 ## Use the library
 
@@ -48,7 +48,7 @@ if (result.kind === 'encrypted') {
 }
 ```
 
-The format carries 1–1200 UTF-8 bytes. Encryption adds 44 bytes before error correction. It uses AES-256-GCM and PBKDF2-SHA256 with 600,000 iterations, random salt and IV. Encryption is optional; passphrases are not part of the code. CRC checks accidental corruption; the GCM tag checks encrypted-message integrity. Neither establishes a sender's identity.
+The largest format-3 grid carries 8,554 / 7,413 / 6,273 / 5,132 body bytes at L/M/Q/H. Container metadata and encryption occupy that same capacity; encryption adds 44 bytes. Small ordinary messages still encode exactly as format 2. Larger grids require sufficient optical resolution, so capacity is not a physical scan guarantee. It uses AES-256-GCM and PBKDF2-SHA256 with 600,000 iterations, random salt and IV. Encryption is optional; passphrases are not part of the code. CRC checks accidental corruption; the GCM tag checks encrypted-message integrity. Neither establishes a sender's identity.
 
 ## Command line
 
@@ -63,8 +63,9 @@ The CLI encodes SVG, PNG or symbol matrices and reads PNG or matrix JSON. It acc
 
 ## Implement the format independently
 
-- [Normative format specification](spec/FORMAT.md): exact glyphs, geometry, byte order, checksums, parity, placement, PRNG and equations.
-- [Frozen conformance vectors](spec/vectors.json): full symbol matrices, Unicode/BOM/NUL cases and an encrypted test vector.
+- [Format-3 extension](spec/FORMAT3.md): larger capacity, typed content, binary transport and calculation grammar.
+- [Original format-2 specification](spec/FORMAT.md): exact glyphs, geometry, byte order, checksums, parity, placement, PRNG and equations.
+- [Frozen conformance vectors](spec/vectors.json): full format-2 symbol matrices, Unicode/BOM/NUL cases and an encrypted test vector. [Format-3 vectors](spec/vectors-v3.json) add independently encoded typed and larger messages.
 - [Independent Python implementation](spec/reference.py): encoder and pristine-matrix verifier, using only the Python standard library.
 - [API and integration guide](docs/API.md): scanner results, custom locators, frame sessions and limits.
 - [Compatibility and versioning](spec/VERSIONING.md): software, wire and alphabet versions have separate meanings.
@@ -75,10 +76,11 @@ The CLI encodes SVG, PNG or symbol matrices and reads PNG or matrix JSON. It acc
 npm test
 npm run test:reference
 npm run test:optical
+npm run test:extensions
 npm run check
 ```
 
-`npm test` runs deterministic unit, protocol, parser, CLI and browser-bundle/worker checks. `test:reference` requires Python 3.10+ and cross-checks the specification vectors. `test:optical` records seeded synthetic camera tests, whole-block repair and multi-frame recovery. It never gives the optical decoder the expected text or grid map.
+`npm test` runs deterministic unit, protocol, parser, CLI and browser-bundle/worker checks. `test:reference` requires Python 3.10+ and cross-checks both sets of specification vectors. `test:extensions` checks maximum-capacity and typed codes optically. `test:optical` records seeded synthetic camera tests, whole-block repair and multi-frame recovery. It never gives the optical decoder the expected text or grid map.
 
 See [VALIDATION](docs/VALIDATION.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md), [CHANGELOG](CHANGELOG.md) and [RELEASING](docs/RELEASING.md).
 

@@ -4,14 +4,28 @@ Import the package from CJS or ESM, or load `dist/prism19.js` for `globalThis.Pr
 
 ## Encode and render
 
-`encode(text, { ecc: 'Q' })` returns a code. Levels L/M/Q/H correspond to k=15/13/11/9. Text must be a well-formed string with 1–1200 UTF-8 bytes. Leading BOM, NUL, newlines and non-ASCII characters are preserved; no Unicode normalization is performed. Unpaired UTF-16 surrogates are rejected.
+`encode(text, { ecc: 'Q' })` returns a code. Levels L/M/Q/H correspond to k=15/13/11/9. Text must be a well-formed string with 1–8554 UTF-8 bytes, subject to the selected correction level. `capacity({ecc})` gives its current maximum: L 8554, M 7413, Q 6273, H 5132. `capacity({ecc, encrypted: true})` subtracts the 44-byte encryption envelope. These are maximum body/plaintext sizes, before typed metadata. Leading BOM, NUL, newlines and non-ASCII characters are preserved; no Unicode normalization is performed. Unpaired UTF-16 surrogates are rejected.
 
 - `toSVG(code, scale=12)` returns an SVG string with the full quiet zone.
 - `toRGBA(code, scale=12)` returns `{ width, height, data }`, where data is a `Uint8ClampedArray` in RGBA order.
 - `toMatrix(code)` returns only the n×n symbol matrix: -2 fixed white, -1 fixed black, 0–18 glyphs.
 - `decodeMatrix(matrix, { soft, equations })` reads symbol observations without detecting an image. Use `null` for an unknown cell. It validates framing and CRC just as the optical path does.
 
-Scale is an integer 1–64, subject to the rendered 4-megapixel bound. Very small scales may not preserve the pattern; a renderable image is not necessarily scannable. Do not crop the quiet zone or blur the exported code deliberately. A code object is intended to come from the encoder; serialize with `toMatrix`, not by assuming its internal layout is stable.
+Scale is an integer 1–64. RGBA/PNG rendering is subject to the 4-megapixel bound; SVG is vector output and does not allocate the equivalent raster. Very small scales may not preserve the pattern; a renderable image is not necessarily scannable. Do not crop the quiet zone or blur the exported code deliberately. A code object is intended to come from the encoder; serialize with `toMatrix`, not by assuming its internal layout is stable.
+
+Ordinary text up to 1200 bytes (or text envelopes up to 1244 bytes) defaults to format 2; larger content defaults to format 3. `encode` and `encodeEnvelope` accept `wireVersion: 2 | 3` to require a profile. An impossible version/size combination throws. `wireVersion` exported by the library is its highest supported version (3), `supportedWireVersions` is `[2,3]`, and `code.version` identifies the actual generated symbol.
+
+## Typed payloads
+
+`encodePayload(type, data, {ecc, mimeType, name})` accepts text or unsigned bytes. Types are `binary`, `json`, `calculation`, `url`, `image`, `audio`, `contact`. It emits format 3 and validates the registry's textual and metadata constraints. `encodePayloadEncrypted(type, data, passphrase, options)` encrypts the complete typed container. It also uses format 3. See [PAYLOADS](PAYLOADS.md) for examples and file limits.
+
+`packPayload`/`unpackPayload` serialize and parse the content container independently of optics. Default MIME types need no transmitted MIME string; a container with no filename uses four overhead bytes. Media files remain raw bytes. `payloadTypes` exposes the frozen registry.
+
+A successful typed scan has `kind: 'payload'` and `result.payload = {type, typeId, mimeType, name, data, text?}`. `data` is the exact recovered `Uint8Array`. `text` is present for the textual types. `result.bytes` still counts transport body bytes, while `result.payload.data.length` counts content bytes. Invalid or unsupported containers do not produce a typed success.
+
+Encrypted results have `typed: true` when the encrypted plaintext is a container. Call `decryptPayload(Uint8Array.from(result.envelope), passphrase)` for those results; use `decrypt` for encrypted ordinary text. The two encryption contexts are deliberately distinct. `decryptPayload` returns the parsed payload after authentication.
+
+`evaluateCalculation(expression)` is an explicit numeric operation using the bounded grammar in [FORMAT3](../spec/FORMAT3.md). Scanning checks syntax but does not calculate, navigate to links or play audio. Media format decoding is left to the browser/application; a valid transport checksum does not prove that a media file is playable.
 
 ## Scan camera pixels
 
@@ -36,7 +50,7 @@ Omitting `session` performs a single-image attempt. Keep one session for one liv
 
 With a session, `tracking` defaults to true. A recent grid position can be reused for up to one second, provided image dimensions and locator identity match. The scanner reconstructs and verifies the current frame's header and payload; it does not return a cached message. Failed tracking falls back to finder detection within the budget. `tracking: false` disables this shortcut. Clearing the session clears both pose and accumulated evidence.
 
-Input must have positive integer width/height, at most 4096 per side and 4,194,304 pixels total, with an unsigned byte array of exactly `width*height*4` entries. Alpha is composited over white on a copy when necessary. Downsample large camera frames before calling. The included demo uses a worker and normally captures at most 1120 pixels on the longer dimension with a 250 ms budget; every sixth new frame uses up to 1600 pixels and 1000 ms. Still images use 2200 ms. The demo submits fresh video frames after each completed attempt and skips duplicate video timestamps.
+Input must have positive integer width/height, at most 4096 per side and 4,194,304 pixels total, with an unsigned byte array of exactly `width*height*4` entries. Alpha is composited over white on a copy when necessary. Downsample large camera frames before calling. The included demo uses a worker and normally captures at most 1120 pixels on the longer dimension with a 250 ms budget; every sixth new frame uses up to 1800 pixels and 2200 ms. Still images use 2200 ms. The demo submits fresh video frames after each completed attempt and skips duplicate video timestamps.
 
 `scan()` is synchronous. Run it in a worker to keep the UI responsive and send the next frame after the previous one finishes. `maxTimeMs` sets a cooperative search budget from 10 to 10000 milliseconds, default 2200, starting after public input validation and alpha normalization. Checks occur between stages and candidate searches; a locator or individual operation already executing can overrun the budget. This is not a hard wall-clock guarantee. An incomplete result receives `timedOut: true` when the search budget is exhausted. The scanner tries ordinary hard decisions across detected poses before advanced hypotheses, within the budget. A larger budget may improve difficult still-image recovery.
 
@@ -45,6 +59,7 @@ The method returns one of:
 | kind | Meaning | Use |
 |---|---|---|
 | `prism19` | CRC-verified, valid UTF-8 plaintext | `result.text` |
+| `payload` | Validated typed content | `result.payload.data`, plus type/MIME/name and optional text |
 | `encrypted` | Reconstructed and CRC-verified encrypted envelope | Convert `result.envelope` to `Uint8Array`, then call `decrypt` |
 | `partial19` | Valid header found, full payload not recovered | Keep scanning; `frames` counts evidence frames |
 | `none` | No accepted complete message/header result | Try a clearer frame |
@@ -61,7 +76,7 @@ The core browser bundle requires a supplied locator for optical scanning. It can
 
 ## Encryption
 
-`encrypt(text, passphrase)` returns an envelope; `encodeEnvelope(bytes, options)` encodes it. `encodeEncrypted(text, passphrase, options)` combines both. `decrypt(envelopeBytes, passphrase)` verifies the tag and returns exact UTF-8 text. The passphrase must have 1–4096 UTF-8 bytes and no lone surrogate. Errors use a generic wrong-passphrase/altered-data message.
+`encrypt(text, passphrase)` returns an ordinary-text envelope (at most 8510 plaintext bytes, with a potentially lower per-code correction bound); `encodeEnvelope(bytes, options)` encodes it. `encodeEncrypted(text, passphrase, options)` combines both. `decrypt(envelopeBytes, passphrase)` verifies the tag and returns exact UTF-8 text. The passphrase must have 1–4096 UTF-8 bytes and no lone surrogate. Errors use a generic wrong-passphrase/altered-data message.
 
 ```js
 const result = Prism19.scan(image);

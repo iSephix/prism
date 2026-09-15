@@ -17,3 +17,11 @@ result.diagnostics?.locateCalls.toFixed();
 if (result.kind === 'none' || result.kind === 'partial19') result.timedOut;
 // @ts-expect-error time budget must be numeric
 scan(P.toRGBA(code), {maxTimeMs: '250'});
+
+const contentCode = P.encodePayload('image', new Uint8Array([1, 2]), {name: 'test.png'});
+const contentResult = P.scan(P.toRGBA(contentCode));
+if (contentResult.kind === 'payload') contentResult.payload.data.byteLength;
+P.capacity({ecc: 'L', encrypted: true});
+P.evaluateCalculation('sqrt(81)');
+// @ts-expect-error content markers are allocated explicitly
+P.encodePayload('script', 'alert(1)');

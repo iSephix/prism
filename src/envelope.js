@@ -9,6 +9,7 @@
   'use strict';
   const encoder = new TextEncoder(),
     AAD = encoder.encode('Prism19/protocol2/AES-256-GCM/PBKDF2-SHA256/600000'),
+    TYPED_AAD = encoder.encode('Prism19/protocol3/typed1/AES-256-GCM/PBKDF2-SHA256/600000'),
     ITERATIONS = 600000;
   async function key(password, salt) {
     if (!crypto?.subtle) throw Error('Encryption needs a secure browser context.');
@@ -25,16 +26,15 @@
       length: 256
     }, false, ['encrypt', 'decrypt']);
   }
-  async function encrypt(text, password) {
+  async function seal(plain, password, typed = false) {
     if (!password) throw Error('Enter an encryption passphrase.');
     const salt = crypto.getRandomValues(new Uint8Array(16)),
       iv = crypto.getRandomValues(new Uint8Array(12)),
       k = await key(password, salt),
-      plain = encoder.encode(text),
       cipher = new Uint8Array(await crypto.subtle.encrypt({
         name: 'AES-GCM',
         iv,
-        additionalData: AAD,
+        additionalData: typed ? TYPED_AAD : AAD,
         tagLength: 128
       }, k, plain)),
       out = new Uint8Array(28 + cipher.length);
@@ -43,7 +43,7 @@
     out.set(cipher, 28);
     return out;
   }
-  async function decrypt(data, password) {
+  async function open(data, password, typed = false) {
     if (!password) throw Error('Enter the passphrase for this code.');
     const bytes = Uint8Array.from(data);
     if (bytes.length < 44) throw Error('Invalid encrypted envelope.');
@@ -52,20 +52,24 @@
         plain = await crypto.subtle.decrypt({
           name: 'AES-GCM',
           iv: bytes.slice(16, 28),
-          additionalData: AAD,
+          additionalData: typed ? TYPED_AAD : AAD,
           tagLength: 128
         }, k, bytes.slice(28));
-      return new TextDecoder('utf-8', {
-        fatal: true,
-        ignoreBOM: true
-      }).decode(plain);
+      return new Uint8Array(plain);
     } catch {
       throw Error('Wrong passphrase or altered encrypted data.');
     }
   }
+  const encrypt = (text, password) => seal(encoder.encode(text), password);
+  async function decrypt(data, password) {
+    try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(await open(data, password)); }
+    catch { throw Error('Wrong passphrase or altered encrypted data.'); }
+  }
   return {
     encrypt,
     decrypt,
+    encryptBytes: (data, password) => seal(data, password, true),
+    decryptBytes: (data, password) => open(data, password, true),
     ITERATIONS,
     overhead: 44
   };

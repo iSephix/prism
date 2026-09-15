@@ -2,6 +2,12 @@
 
 This release has several distinct evidence sources. Keep them separate when reporting results.
 
+## Format 3 capacity and content
+
+Version 0.3 adds six independently generated format-3 vectors while retaining the seven original vectors. Tests exercise every correction level at its exact maximum byte capacity, both sides of the byte-limit boundary, all content markers, exact binary output, malformed containers, encryption context separation and bounded calculation grammar. The demo's calculation and typed-decryption paths are exercised through its actual worker message contract.
+
+`npm run test:extensions` performs four maximum-capacity and three typed-content optical scans using only pixels. The recorded [format-3 optical report](benchmarks/extensions-0.3.0.json) identifies its runtime and sizes. These are clean synthetic renders; physical print success reported for earlier codes does not validate the new maximum sizes. The earlier [0.2 paired benchmark](BENCHMARKS.md) remains historical evidence and has not been relabeled as a 0.3 comparison.
+
 | Evidence | What it supports | What it does not establish |
 |---|---|---|
 | Frozen matrices reproduced by JS and independent Python | Byte/field/placement interoperability | Camera performance |

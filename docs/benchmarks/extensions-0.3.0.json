@@ -1,0 +1,69 @@
+{
+  "packageVersion": "0.3.0",
+  "wireVersion": 3,
+  "physicalTrial": false,
+  "measuredAt": "2026-09-15T14:45:23.215Z",
+  "runtime": "v24.19.0",
+  "platform": "linux",
+  "cases": [
+    {
+      "name": "Maximum text / L",
+      "bytes": 8554,
+      "grid": 145,
+      "exact": true,
+      "ms": 752.2060140000001,
+      "decoder": "hard RS"
+    },
+    {
+      "name": "Maximum text / M",
+      "bytes": 7413,
+      "grid": 145,
+      "exact": true,
+      "ms": 741.657011,
+      "decoder": "hard RS"
+    },
+    {
+      "name": "Maximum text / Q",
+      "bytes": 6273,
+      "grid": 145,
+      "exact": true,
+      "ms": 711.7146039999998,
+      "decoder": "hard RS"
+    },
+    {
+      "name": "Maximum text / H",
+      "bytes": 5132,
+      "grid": 145,
+      "exact": true,
+      "ms": 704.335431,
+      "decoder": "hard RS"
+    },
+    {
+      "name": "binary",
+      "bytes": 4114,
+      "contentBytes": 4096,
+      "grid": 121,
+      "exact": true,
+      "ms": 445.644589,
+      "decoder": "hard RS"
+    },
+    {
+      "name": "image",
+      "bytes": 82,
+      "contentBytes": 73,
+      "grid": 29,
+      "exact": true,
+      "ms": 18.764008999999987,
+      "decoder": "hard RS"
+    },
+    {
+      "name": "calculation",
+      "bytes": 22,
+      "contentBytes": 18,
+      "grid": 25,
+      "exact": true,
+      "ms": 12.898855999999796,
+      "decoder": "hard RS"
+    }
+  ]
+}

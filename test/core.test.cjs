@@ -26,7 +26,7 @@ test('all frozen matrices reproduce exactly and decode without image geometry', 
 test('all supported radix lengths agree with exact integer capacity', () => {
   let capacity = 1n,
     digits = 0;
-  for (let n = 0; n <= 1244; n++) {
+  for (let n = 0; n <= 8554; n++) {
     while (capacity < (1n << BigInt(8 * n))) {
       capacity *= 19n;
       digits++;
@@ -101,7 +101,7 @@ test('reject unsupported protected header fields even with valid header CRC', ()
   const v = vectors[1];
   for (const [offset, value] of [
       [0, 0],
-      [2, 3],
+      [2, 4],
       [3, 12],
       [4, 2],
       [5, 2]
@@ -145,7 +145,7 @@ test('payload CRC and strict UTF-8 gate acceptance after successful RS decoding'
   assert.equal(C.checkPacket([...ds, 1], h), null);
 });
 test('public argument and allocation bounds reject malformed inputs', () => {
-  for (const value of ['', null, 4, {}, '\ud800', '\udc00', 'a'.repeat(1201)]) assert.throws(() => P
+  for (const value of ['', null, 4, {}, '\ud800', '\udc00', 'a'.repeat(8555)]) assert.throws(() => P
     .encode(value));
   assert.throws(() => P.encode('x', {
     ecc: 'X'

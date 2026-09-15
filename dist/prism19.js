@@ -1,4 +1,4 @@
-/*! Prism 19 0.2.0 | Apache-2.0 | See LICENSE and NOTICE. */
+/*! Prism 19 0.3.0 | Apache-2.0 | See LICENSE and NOTICE. */
 (function(){
 const module=undefined,exports=undefined,define=undefined;
 
@@ -476,10 +476,15 @@ const module=undefined,exports=undefined,define=undefined;
     return out;
   }
 
-  function makeHeader(payload, k, flags) {
+  function capacity(k, n = 145) {
+    const blocks = Math.floor((layout(n).slots.length - HEADER_SYMBOLS) / 19);
+    return Math.floor(blocks * k * LOG / 8);
+  }
+
+  function makeHeader(payload, k, flags, version = 2) {
     const h = new Uint8Array(16),
       d = new DataView(h.buffer);
-    h.set([80, 78, 2, k, flags, 1]);
+    h.set([80, 78, version, k, flags, 1]);
     d.setUint16(6, payload.length);
     d.setUint32(8, P.crc32(payload));
     d.setUint32(12, P.crc32(h.slice(0, 12)));
@@ -496,15 +501,19 @@ const module=undefined,exports=undefined,define=undefined;
     const h = bytesFromDigits(ds, 16);
     if (!h) return null;
     const d = new DataView(h.buffer);
-    if (h[0] !== 80 || h[1] !== 78 || h[2] !== 2 || ![9, 11, 13, 15].includes(h[3]) || h[4] > 1 || h[5] !==
+    if (h[0] !== 80 || h[1] !== 78 || ![2, 3].includes(h[2]) || ![9, 11, 13, 15].includes(h[3]) || h[4] > (h[2] === 2 ? 1 : 3) || h[5] !==
       1 || P.crc32(h.slice(0, 12)) !== d.getUint32(12)) return null;
     const length = d.getUint16(6);
-    if (!length || length > (h[4] ? 1244 : 1200) || (h[4] && length < 45)) return null;
+    const encrypted = !!(h[4] & 1), typed = !!(h[4] & 2);
+    const minimum = (encrypted ? 44 : 0) + (typed ? 4 : 1);
+    const maximum = h[2] === 2 ? (encrypted ? 1244 : 1200) : capacity(h[3], n);
+    if (length < minimum || length > maximum) return null;
     const count = Math.ceil(length * 8 / LOG),
       blocks = Math.ceil(count / h[3]);
     if (HEADER_SYMBOLS + blocks * 19 > layout(n).slots.length) return null;
     return {
       n,
+      version: h[2],
       k: h[3],
       flags: h[4],
       length,
@@ -530,18 +539,23 @@ const module=undefined,exports=undefined,define=undefined;
   function encode(value, ecc = 'Q', options = {}) {
     const payload = options.payload ? Uint8Array.from(options.payload) : utf8.encode(value),
       k = K[ecc];
-    if (!k || !payload.length || payload.length > (options.encrypted ? 1244 : 1200)) throw Error(
-      'Prism 19 supports up to 1200 text bytes plus encryption overhead.');
+    const flags = (options.encrypted ? 1 : 0) | (options.typed ? 2 : 0);
+    const legacyLimit = options.encrypted ? 1244 : 1200;
+    const version = options.wireVersion ?? (options.typed || payload.length > legacyLimit ? 3 : 2);
+    if (!k || ![2, 3].includes(version) || version === 2 && options.typed ||
+        payload.length < (options.encrypted ? 44 : 0) + (options.typed ? 4 : 1) ||
+        payload.length > (version === 2 ? legacyLimit : capacity(k))) throw Error(
+      `Payload exceeds the selected format/correction capacity (${k ? (version === 2 ? legacyLimit : capacity(k)) : 0} bytes).`);
     const ds = digits(payload),
       blocks = Math.ceil(ds.length / k),
       padded = new Uint8Array(blocks * k);
     padded.set(ds);
     let n = 25;
-    while (layout(n).slots.length < HEADER_SYMBOLS + blocks * 19) n += 4;
+    while (n <= 145 && layout(n).slots.length < HEADER_SYMBOLS + blocks * 19) n += 4;
     if (n > 145) throw Error('Code is too large.');
     const l = layout(n),
       cells = new Int16Array(n * n).fill(-1),
-      h = makeHeader(payload, k, options.encrypted ? 1 : 0);
+      h = makeHeader(payload, k, flags, version);
     l.pilots.forEach((cell, i) => cells[cell] = i % 19);
     for (let j = 0; j < 19; j++)
       for (let b = 0; b < 4; b++) cells[l.slots[j * 4 + b]] = h.blocks[b][j];
@@ -560,7 +574,7 @@ const module=undefined,exports=undefined,define=undefined;
     return {
       mode: 'p19',
       ecc,
-      version: 2,
+      version,
       layers: 1,
       n,
       cells,
@@ -576,6 +590,7 @@ const module=undefined,exports=undefined,define=undefined;
       paritySymbols: blocks * (19 - k) + 40,
       digitCount: ds.length,
       encrypted: !!options.encrypted,
+      typed: !!options.typed,
       layout: l
     };
   }
@@ -1063,11 +1078,13 @@ const module=undefined,exports=undefined,define=undefined;
 
   function makeResult(body, h, start, path, frames = 1) {
     const result = {
-      kind: h.flags ? 'encrypted' : 'prism19',
+      kind: h.flags & 1 ? 'encrypted' : h.flags & 2 ? 'payload' : 'prism19',
       mode: 'p19',
       bytes: body.bytes.length,
       envelope: Array.from(body.bytes),
-      encrypted: !!h.flags,
+      encrypted: !!(h.flags & 1),
+      typed: !!(h.flags & 2),
+      wireVersion: h.version || 2,
       verified: true,
       checksum: h.crc.toString(16).padStart(8, '0'),
       ms: performance.now() - start,
@@ -1148,7 +1165,7 @@ const module=undefined,exports=undefined,define=undefined;
     function finish(result) {
       result = result || partial || { kind: 'none', mode: 'p19' };
       result.ms = performance.now() - start;
-      if (expired() && !['prism19', 'encrypted'].includes(result.kind)) result.timedOut = true;
+      if (expired() && !['prism19', 'encrypted', 'payload'].includes(result.kind)) result.timedOut = true;
       if (options.diagnostics) result.diagnostics = stats;
       return result;
     }
@@ -1279,6 +1296,7 @@ const module=undefined,exports=undefined,define=undefined;
     digits,
     bytesFromDigits,
     makeHeader,
+    capacity,
     parseHeader,
     equation,
     observations,
@@ -1312,6 +1330,7 @@ const module=undefined,exports=undefined,define=undefined;
   'use strict';
   const encoder = new TextEncoder(),
     AAD = encoder.encode('Prism19/protocol2/AES-256-GCM/PBKDF2-SHA256/600000'),
+    TYPED_AAD = encoder.encode('Prism19/protocol3/typed1/AES-256-GCM/PBKDF2-SHA256/600000'),
     ITERATIONS = 600000;
   async function key(password, salt) {
     if (!crypto?.subtle) throw Error('Encryption needs a secure browser context.');
@@ -1328,16 +1347,15 @@ const module=undefined,exports=undefined,define=undefined;
       length: 256
     }, false, ['encrypt', 'decrypt']);
   }
-  async function encrypt(text, password) {
+  async function seal(plain, password, typed = false) {
     if (!password) throw Error('Enter an encryption passphrase.');
     const salt = crypto.getRandomValues(new Uint8Array(16)),
       iv = crypto.getRandomValues(new Uint8Array(12)),
       k = await key(password, salt),
-      plain = encoder.encode(text),
       cipher = new Uint8Array(await crypto.subtle.encrypt({
         name: 'AES-GCM',
         iv,
-        additionalData: AAD,
+        additionalData: typed ? TYPED_AAD : AAD,
         tagLength: 128
       }, k, plain)),
       out = new Uint8Array(28 + cipher.length);
@@ -1346,7 +1364,7 @@ const module=undefined,exports=undefined,define=undefined;
     out.set(cipher, 28);
     return out;
   }
-  async function decrypt(data, password) {
+  async function open(data, password, typed = false) {
     if (!password) throw Error('Enter the passphrase for this code.');
     const bytes = Uint8Array.from(data);
     if (bytes.length < 44) throw Error('Invalid encrypted envelope.');
@@ -1355,23 +1373,171 @@ const module=undefined,exports=undefined,define=undefined;
         plain = await crypto.subtle.decrypt({
           name: 'AES-GCM',
           iv: bytes.slice(16, 28),
-          additionalData: AAD,
+          additionalData: typed ? TYPED_AAD : AAD,
           tagLength: 128
         }, k, bytes.slice(28));
-      return new TextDecoder('utf-8', {
-        fatal: true,
-        ignoreBOM: true
-      }).decode(plain);
+      return new Uint8Array(plain);
     } catch {
       throw Error('Wrong passphrase or altered encrypted data.');
     }
   }
+  const encrypt = (text, password) => seal(encoder.encode(text), password);
+  async function decrypt(data, password) {
+    try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(await open(data, password)); }
+    catch { throw Error('Wrong passphrase or altered encrypted data.'); }
+  }
   return {
     encrypt,
     decrypt,
+    encryptBytes: (data, password) => seal(data, password, true),
+    decryptBytes: (data, password) => open(data, password, true),
     ITERATIONS,
     overhead: 44
   };
+});
+
+;
+
+/* src/payload.js */
+// SPDX-License-Identifier: Apache-2.0
+// Format-3 content registry and a bounded arithmetic grammar. No script execution.
+(function(root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.PrismPayload = factory();
+})(globalThis, function() {
+  'use strict';
+  const encoder = new TextEncoder(), decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+  const definitions = [
+    ['binary', 'application/octet-stream'], ['json', 'application/json'],
+    ['calculation', 'text/x-prism-calculation'], ['url', 'text/uri-list'],
+    ['image', 'image/png'], ['audio', 'audio/wav'], ['contact', 'text/vcard']
+  ];
+  const types = Object.freeze(definitions.map(([name, mimeType], i) => Object.freeze({ id: i + 1, name, mimeType })));
+  const media = {
+    image: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
+    audio: ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp4', 'audio/webm', 'audio/aac', 'audio/flac']
+  };
+  function utf8(text) {
+    if (typeof text !== 'string') throw new TypeError('Expected text.');
+    const bytes = encoder.encode(text);
+    if (decoder.decode(bytes) !== text) throw new TypeError('Text contains an unpaired surrogate.');
+    return bytes;
+  }
+  function byteArray(value) {
+    if (!ArrayBuffer.isView(value) || !['[object Uint8Array]', '[object Uint8ClampedArray]'].includes(
+      Object.prototype.toString.call(value))) throw new TypeError('Expected unsigned bytes.');
+    return value;
+  }
+
+  const functions = Object.freeze({
+    sqrt: [Math.sqrt, 1, 1], abs: [Math.abs, 1, 1], sin: [Math.sin, 1, 1],
+    cos: [Math.cos, 1, 1], tan: [Math.tan, 1, 1], log: [Math.log, 1, 1],
+    log10: [Math.log10, 1, 1], exp: [Math.exp, 1, 1], floor: [Math.floor, 1, 1],
+    ceil: [Math.ceil, 1, 1], round: [Math.round, 1, 1], min: [Math.min, 1, 8],
+    max: [Math.max, 1, 8], pow: [Math.pow, 2, 2]
+  });
+  function calculation(expression, execute = true) {
+    if (typeof expression !== 'string' || !expression.trim() || expression.length > 1024)
+      throw new RangeError('Calculation must contain 1–1024 characters.');
+    const tokens = [];
+    for (let i = 0; i < expression.length;) {
+      if (/\s/.test(expression[i])) { i++; continue; }
+      const match = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|^[A-Za-z][A-Za-z0-9]*|^[()+\-*/%^,]/.exec(expression.slice(i));
+      if (!match || tokens.length >= 256) throw new SyntaxError('Unsupported calculation syntax or too many tokens.');
+      tokens.push(match[0]); i += match[0].length;
+    }
+    let at = 0, depth = 0;
+    const finite = n => { if (execute && !Number.isFinite(n)) throw new RangeError('Calculation has no finite real result.'); return execute ? n : 1; };
+    const take = t => tokens[at] === t ? (++at, true) : false;
+    function nested(fn) {
+      if (++depth > 32) throw new RangeError('Calculation nesting exceeds 32.');
+      try { return fn(); } finally { depth--; }
+    }
+    function primary() {
+      if (take('(')) { const v = nested(sum); if (!take(')')) throw new SyntaxError('Missing closing parenthesis.'); return v; }
+      const token = tokens[at++];
+      if (token === undefined) throw new SyntaxError('Missing calculation operand.');
+      if (/^(?:\d|\.)/.test(token)) { const n = Number(token); if (!Number.isFinite(n)) throw new RangeError('Number is too large.'); return n; }
+      if (token === 'pi') return Math.PI;
+      if (token === 'e') return Math.E;
+      if (!Object.hasOwn(functions, token) || !take('(')) throw new SyntaxError('Unknown calculation name.');
+      const args = [];
+      if (!take(')')) {
+        do { args.push(nested(sum)); if (args.length > 8) throw new RangeError('Too many function arguments.'); } while (take(','));
+        if (!take(')')) throw new SyntaxError('Missing closing parenthesis.');
+      }
+      const [fn, min, max] = functions[token];
+      if (args.length < min || args.length > max) throw new RangeError('Wrong function argument count.');
+      return execute ? finite(fn(...args)) : 1;
+    }
+    function power() { const v = primary(); return take('^') ? finite(v ** nested(unary)) : v; }
+    function unary() { if (take('+')) return nested(unary); if (take('-')) return -nested(unary); return power(); }
+    function product() {
+      let v = unary();
+      while (['*', '/', '%'].includes(tokens[at])) {
+        const op = tokens[at++], b = unary();
+        v = finite(op === '*' ? v * b : op === '/' ? v / b : v % b);
+      }
+      return v;
+    }
+    function sum() {
+      let v = product();
+      while (['+', '-'].includes(tokens[at])) { const op = tokens[at++], b = product(); v = finite(op === '+' ? v + b : v - b); }
+      return v;
+    }
+    const result = sum();
+    if (at !== tokens.length) throw new SyntaxError('Unexpected calculation token.');
+    return finite(result);
+  }
+
+  function validate(type, data, mimeType, name) {
+    if (!type) throw new RangeError('Unsupported payload type.');
+    if (!/^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/.test(mimeType) || mimeType.length > 96)
+      throw new RangeError('Use a MIME type without parameters, at most 96 ASCII bytes.');
+    if (utf8(name).length > 120 || /[\x00-\x1f\x7f/\\]/.test(name) || name === '.' || name === '..')
+      throw new RangeError('Filename must be a simple name of at most 120 UTF-8 bytes.');
+    if (media[type.name] && !media[type.name].includes(mimeType)) throw new RangeError('Unsupported media MIME type.');
+    if (!['binary', 'image', 'audio'].includes(type.name) && mimeType !== type.mimeType)
+      throw new RangeError('MIME type does not match the payload marker.');
+    let text;
+    if (['json', 'calculation', 'url', 'contact'].includes(type.name)) text = decoder.decode(data);
+    if (type.name === 'json') JSON.parse(text);
+    if (type.name === 'calculation') calculation(text, false);
+    if (type.name === 'url') {
+      if (/\s/.test(text) || !/^https?:\/\//i.test(text)) throw new RangeError('URL payloads require one HTTP(S) URL.');
+      const url = new URL(text);
+      if (!['http:', 'https:'].includes(url.protocol)) throw new RangeError('Unsupported URL scheme.');
+    }
+    if (type.name === 'contact' && (!/^BEGIN:VCARD\r?\n/.test(text) || !/\r?\nEND:VCARD\r?\n?$/.test(text)))
+      throw new RangeError('Contact payload must contain a vCard.');
+    return text;
+  }
+  function pack(typeName, value, options = {}) {
+    const type = types.find(t => t.name === typeName);
+    if (!type) throw new RangeError('Unsupported payload type.');
+    const data = typeof value === 'string' ? utf8(value) : byteArray(value);
+    if (data.length > 8550) throw new RangeError('Payload data exceeds one code.');
+    const mimeType = options.mimeType ?? type.mimeType, name = options.name ?? '';
+    if (typeof mimeType !== 'string' || typeof name !== 'string') throw new TypeError('MIME type and name must be strings.');
+    validate(type, data, mimeType, name);
+    const mime = mimeType === type.mimeType ? new Uint8Array() : utf8(mimeType), filename = utf8(name), out = new Uint8Array(4 + mime.length + filename.length + data.length);
+    if (out.length > 8554) throw new RangeError('Payload metadata and data exceed one code.');
+    out.set([1, type.id, mime.length, filename.length]); out.set(mime, 4); out.set(filename, 4 + mime.length);
+    out.set(data, 4 + mime.length + filename.length);
+    return out;
+  }
+  function unpack(value) {
+    const bytes = byteArray(value);
+    if (bytes.length < 4 || bytes.length > 8554 || bytes[0] !== 1 || bytes[2] > 96 || bytes[3] > 120)
+      throw new RangeError('Unsupported typed payload header.');
+    const end = 4 + bytes[2] + bytes[3];
+    if (end > bytes.length) throw new RangeError('Truncated payload metadata.');
+    const type = types.find(t => t.id === bytes[1]), mimeType = bytes[2] ? decoder.decode(bytes.subarray(4, 4 + bytes[2])) : type?.mimeType,
+      name = decoder.decode(bytes.subarray(4 + bytes[2], end)), data = Uint8Array.from(bytes.subarray(end));
+    const text = validate(type, data, mimeType, name);
+    return { type: type.name, typeId: type.id, mimeType, name, data, ...(text !== undefined ? { text } : {}) };
+  }
+  return { types, pack, unpack, evaluate: expression => calculation(expression), utf8 };
 });
 
 ;
@@ -2058,14 +2224,15 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
 // Copyright 2026 Prism 19 contributors.
 (function(root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./codec.js'), require('./envelope.js'), () => require(
+    module.exports = factory(require('./codec.js'), require('./envelope.js'), require('./payload.js'), () => require(
       '../vendor/jsqr-locator.js'));
-  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, () => root.Prism19Locator);
-})(globalThis, function(core, envelope, getDefaultLocator) {
+  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Locator);
+})(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.2.0',
-    wireVersion = 2,
-    maxTextBytes = 1200,
+  const version = '0.3.0',
+    wireVersion = 3,
+    supportedWireVersions = Object.freeze([2, 3]),
+    maxTextBytes = 8554,
     maxImagePixels = 4194304;
   const encoder = new TextEncoder();
 
@@ -2090,7 +2257,7 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
     }
     const bytes = encoder.encode(text);
     if (bytes.length < 1 || bytes.length > maxTextBytes) throw new RangeError(
-      'Text must contain 1–1200 UTF-8 bytes.');
+      'Text must contain 1–8554 UTF-8 bytes, subject to the selected correction level.');
     return bytes;
   }
 
@@ -2098,6 +2265,18 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
     const value = options.ecc === undefined ? 'Q' : options.ecc;
     if (!['L', 'M', 'Q', 'H'].includes(value)) throw new RangeError('ecc must be L, M, Q or H.');
     return value;
+  }
+
+  function wire(options) {
+    if (options.wireVersion !== undefined && !supportedWireVersions.includes(options.wireVersion))
+      throw new RangeError('wireVersion must be 2 or 3.');
+    return options.wireVersion;
+  }
+  function capacity(options) {
+    options = optionsObject(options);
+    const ecc = level(options), version = wire(options);
+    if (options.encrypted !== undefined && typeof options.encrypted !== 'boolean') throw new TypeError('encrypted must be boolean.');
+    return version === 2 ? 1200 : core.capacity({ L: 15, M: 13, Q: 11, H: 9 }[ecc]) - (options.encrypted ? 44 : 0);
   }
 
   function password(value) {
@@ -2128,32 +2307,63 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
   function encode(text, options) {
     options = optionsObject(options);
     textBytes(text);
-    return core.encode(text, level(options));
+    return core.encode(text, level(options), { wireVersion: wire(options) });
   }
 
   function encodeEnvelope(data, options) {
     options = optionsObject(options);
-    bytes(data, 45, 1244);
+    bytes(data, 45, 8554);
     return core.encode('', level(options), {
       payload: data,
       encrypted: true,
+      wireVersion: wire(options),
       originalBytes: data.length - 44
     });
   }
   async function encrypt(text, passphrase) {
-    textBytes(text);
+    if (textBytes(text).length > 8510) throw new RangeError('Encrypted text exceeds 8510 bytes.');
     password(passphrase);
     return envelope.encrypt(text, passphrase);
   }
   async function decrypt(data, passphrase) {
-    bytes(data, 45, 1244);
+    bytes(data, 45, 8554);
     password(passphrase);
     return envelope.decrypt(data, passphrase);
   }
   async function encodeEncrypted(text, passphrase, options) {
     options = optionsObject(options);
-    level(options);
+    if (textBytes(text).length > capacity({ ...options, encrypted: true })) throw new RangeError('Encrypted text exceeds the selected correction capacity.');
     return encodeEnvelope(await encrypt(text, passphrase), options);
+  }
+
+  const packPayload = (type, data, options) => payload.pack(type, data, optionsObject(options));
+  const unpackPayload = data => payload.unpack(bytes(data, 4, 8554));
+  function encodePayload(type, data, options) {
+    options = optionsObject(options);
+    if (wire(options) === 2) throw new RangeError('Typed payloads require wire version 3.');
+    const packet = packPayload(type, data, options);
+    return core.encode('', level(options), { payload: packet, typed: true, wireVersion: 3,
+      originalBytes: typeof data === 'string' ? payload.utf8(data).length : data.length });
+  }
+  async function encodePayloadEncrypted(type, data, passphrase, options) {
+    options = optionsObject(options);
+    if (wire(options) === 2) throw new RangeError('Typed payloads require wire version 3.');
+    const packet = packPayload(type, data, options);
+    password(passphrase);
+    if (packet.length > capacity({ ...options, encrypted: true })) throw new RangeError('Encrypted payload exceeds the selected correction capacity.');
+    return core.encode('', level(options), { payload: await envelope.encryptBytes(packet, passphrase),
+      encrypted: true, typed: true, wireVersion: 3,
+      originalBytes: typeof data === 'string' ? payload.utf8(data).length : data.length });
+  }
+  async function decryptPayload(data, passphrase) {
+    bytes(data, 48, 8554); password(passphrase);
+    return unpackPayload(await envelope.decryptBytes(data, passphrase));
+  }
+  function withPayload(result) {
+    if (result.kind !== 'payload') return result;
+    try { return { ...result, payload: unpackPayload(Uint8Array.from(result.envelope)) }; }
+    catch { return { kind: 'none', mode: 'p19', ms: result.ms,
+      ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}) }; }
   }
 
   function validateCode(code) {
@@ -2164,16 +2374,16 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
     return code;
   }
 
-  function scale(code, value) {
+  function scale(code, value, raster = true) {
     validateCode(code);
     if (value === undefined) value = 12;
     if (!Number.isInteger(value) || value < 1 || value > 64) throw new RangeError(
       'Scale must be an integer from 1 to 64.');
-    if ((code.n + 8) ** 2 * value ** 2 > maxImagePixels) throw new RangeError(
+    if (raster && (code.n + 8) ** 2 * value ** 2 > maxImagePixels) throw new RangeError(
       'Rendered image exceeds the 4 megapixel limit.');
     return value;
   }
-  const toSVG = (code, pixelsPerModule) => core.svg(code, scale(code, pixelsPerModule));
+  const toSVG = (code, pixelsPerModule) => core.svg(code, scale(code, pixelsPerModule, false));
   const toRGBA = (code, pixelsPerModule) => core.raster(code, scale(code, pixelsPerModule));
 
   function toMatrix(code) {
@@ -2259,7 +2469,7 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
       return found;
     };
     configured.locatorKey = locate;
-    const result = core.scan(input, configured);
+    const result = withPayload(core.scan(input, configured));
     result.ms = performance.now() - start;
     return result;
   }
@@ -2296,7 +2506,7 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
       ms: performance.now() - start
     };
     const body = core.bodyFromScores(scores, header, configured);
-    return body ? core.makeResult(body, header, start) : {
+    return body ? withPayload(core.makeResult(body, header, start)) : {
       kind: 'partial19',
       mode: 'p19',
       grid: n,
@@ -2307,6 +2517,15 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
   return Object.freeze({
     version,
     wireVersion,
+    supportedWireVersions,
+    capacity,
+    payloadTypes: payload.types,
+    packPayload,
+    unpackPayload,
+    encodePayload,
+    encodePayloadEncrypted,
+    decryptPayload,
+    evaluateCalculation: payload.evaluate,
     maxTextBytes,
     maxImagePixels,
     alphabet: core.alphabet.symbols,

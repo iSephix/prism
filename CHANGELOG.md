@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — larger capacity and typed content
+
+- Add optical format 3 while preserving format-2 encoding and decoding for existing messages and prints.
+- Unlock 8554/7413/6273/5132 body bytes at L/M/Q/H, with exact capacity checks and rejection before oversized allocation.
+- Add a compact four-byte typed-container header, optional MIME/filename metadata and markers for binary, JSON, calculations, HTTP(S) links, images, audio and contacts.
+- Encrypt typed content and metadata with a distinct AES-GCM context. Preserve the existing ordinary-text suite and independent fixture.
+- Add a bounded arithmetic parser, with explicit evaluation after scanning; transport never executes arbitrary programs.
+- Add demo type selection, local image fitting, image/audio samples and previews, exact-byte downloads, and larger periodic camera captures. Audio starts only through its playback control.
+- Add CLI typed input/output, actual wire versions in matrix documents, independent format-3 vectors, capacity/marker/encryption tests and a maximum-size optical gate.
+- Keep zero installed package dependencies. SVG exports are no longer constrained by the raster allocation limit; RGBA/PNG retains the 4-megapixel bound.
+
+
 ## 0.2.0 — faster scanning and damaged-code recovery
 
 - Keep optical format 2 and alphabet 1 unchanged; all frozen matrices and existing prints remain compatible.

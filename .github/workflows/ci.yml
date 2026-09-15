@@ -28,5 +28,8 @@ jobs:
       - name: Optical recovery
         if: runner.os == 'Linux' && matrix.node == '24'
         run: npm run test:optical
+      - name: Extended capacity and typed optical payloads
+        if: runner.os == 'Linux' && matrix.node == '24'
+        run: npm run test:extensions
       - name: Package contents
         run: npm pack --ignore-scripts

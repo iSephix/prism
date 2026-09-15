@@ -2,14 +2,15 @@
 // Copyright 2026 Prism 19 contributors.
 (function(root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./codec.js'), require('./envelope.js'), () => require(
+    module.exports = factory(require('./codec.js'), require('./envelope.js'), require('./payload.js'), () => require(
       '../vendor/jsqr-locator.js'));
-  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, () => root.Prism19Locator);
-})(globalThis, function(core, envelope, getDefaultLocator) {
+  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Locator);
+})(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.2.0',
-    wireVersion = 2,
-    maxTextBytes = 1200,
+  const version = '0.3.0',
+    wireVersion = 3,
+    supportedWireVersions = Object.freeze([2, 3]),
+    maxTextBytes = 8554,
     maxImagePixels = 4194304;
   const encoder = new TextEncoder();
 
@@ -34,7 +35,7 @@
     }
     const bytes = encoder.encode(text);
     if (bytes.length < 1 || bytes.length > maxTextBytes) throw new RangeError(
-      'Text must contain 1–1200 UTF-8 bytes.');
+      'Text must contain 1–8554 UTF-8 bytes, subject to the selected correction level.');
     return bytes;
   }
 
@@ -42,6 +43,18 @@
     const value = options.ecc === undefined ? 'Q' : options.ecc;
     if (!['L', 'M', 'Q', 'H'].includes(value)) throw new RangeError('ecc must be L, M, Q or H.');
     return value;
+  }
+
+  function wire(options) {
+    if (options.wireVersion !== undefined && !supportedWireVersions.includes(options.wireVersion))
+      throw new RangeError('wireVersion must be 2 or 3.');
+    return options.wireVersion;
+  }
+  function capacity(options) {
+    options = optionsObject(options);
+    const ecc = level(options), version = wire(options);
+    if (options.encrypted !== undefined && typeof options.encrypted !== 'boolean') throw new TypeError('encrypted must be boolean.');
+    return version === 2 ? 1200 : core.capacity({ L: 15, M: 13, Q: 11, H: 9 }[ecc]) - (options.encrypted ? 44 : 0);
   }
 
   function password(value) {
@@ -72,32 +85,63 @@
   function encode(text, options) {
     options = optionsObject(options);
     textBytes(text);
-    return core.encode(text, level(options));
+    return core.encode(text, level(options), { wireVersion: wire(options) });
   }
 
   function encodeEnvelope(data, options) {
     options = optionsObject(options);
-    bytes(data, 45, 1244);
+    bytes(data, 45, 8554);
     return core.encode('', level(options), {
       payload: data,
       encrypted: true,
+      wireVersion: wire(options),
       originalBytes: data.length - 44
     });
   }
   async function encrypt(text, passphrase) {
-    textBytes(text);
+    if (textBytes(text).length > 8510) throw new RangeError('Encrypted text exceeds 8510 bytes.');
     password(passphrase);
     return envelope.encrypt(text, passphrase);
   }
   async function decrypt(data, passphrase) {
-    bytes(data, 45, 1244);
+    bytes(data, 45, 8554);
     password(passphrase);
     return envelope.decrypt(data, passphrase);
   }
   async function encodeEncrypted(text, passphrase, options) {
     options = optionsObject(options);
-    level(options);
+    if (textBytes(text).length > capacity({ ...options, encrypted: true })) throw new RangeError('Encrypted text exceeds the selected correction capacity.');
     return encodeEnvelope(await encrypt(text, passphrase), options);
+  }
+
+  const packPayload = (type, data, options) => payload.pack(type, data, optionsObject(options));
+  const unpackPayload = data => payload.unpack(bytes(data, 4, 8554));
+  function encodePayload(type, data, options) {
+    options = optionsObject(options);
+    if (wire(options) === 2) throw new RangeError('Typed payloads require wire version 3.');
+    const packet = packPayload(type, data, options);
+    return core.encode('', level(options), { payload: packet, typed: true, wireVersion: 3,
+      originalBytes: typeof data === 'string' ? payload.utf8(data).length : data.length });
+  }
+  async function encodePayloadEncrypted(type, data, passphrase, options) {
+    options = optionsObject(options);
+    if (wire(options) === 2) throw new RangeError('Typed payloads require wire version 3.');
+    const packet = packPayload(type, data, options);
+    password(passphrase);
+    if (packet.length > capacity({ ...options, encrypted: true })) throw new RangeError('Encrypted payload exceeds the selected correction capacity.');
+    return core.encode('', level(options), { payload: await envelope.encryptBytes(packet, passphrase),
+      encrypted: true, typed: true, wireVersion: 3,
+      originalBytes: typeof data === 'string' ? payload.utf8(data).length : data.length });
+  }
+  async function decryptPayload(data, passphrase) {
+    bytes(data, 48, 8554); password(passphrase);
+    return unpackPayload(await envelope.decryptBytes(data, passphrase));
+  }
+  function withPayload(result) {
+    if (result.kind !== 'payload') return result;
+    try { return { ...result, payload: unpackPayload(Uint8Array.from(result.envelope)) }; }
+    catch { return { kind: 'none', mode: 'p19', ms: result.ms,
+      ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}) }; }
   }
 
   function validateCode(code) {
@@ -108,16 +152,16 @@
     return code;
   }
 
-  function scale(code, value) {
+  function scale(code, value, raster = true) {
     validateCode(code);
     if (value === undefined) value = 12;
     if (!Number.isInteger(value) || value < 1 || value > 64) throw new RangeError(
       'Scale must be an integer from 1 to 64.');
-    if ((code.n + 8) ** 2 * value ** 2 > maxImagePixels) throw new RangeError(
+    if (raster && (code.n + 8) ** 2 * value ** 2 > maxImagePixels) throw new RangeError(
       'Rendered image exceeds the 4 megapixel limit.');
     return value;
   }
-  const toSVG = (code, pixelsPerModule) => core.svg(code, scale(code, pixelsPerModule));
+  const toSVG = (code, pixelsPerModule) => core.svg(code, scale(code, pixelsPerModule, false));
   const toRGBA = (code, pixelsPerModule) => core.raster(code, scale(code, pixelsPerModule));
 
   function toMatrix(code) {
@@ -203,7 +247,7 @@
       return found;
     };
     configured.locatorKey = locate;
-    const result = core.scan(input, configured);
+    const result = withPayload(core.scan(input, configured));
     result.ms = performance.now() - start;
     return result;
   }
@@ -240,7 +284,7 @@
       ms: performance.now() - start
     };
     const body = core.bodyFromScores(scores, header, configured);
-    return body ? core.makeResult(body, header, start) : {
+    return body ? withPayload(core.makeResult(body, header, start)) : {
       kind: 'partial19',
       mode: 'p19',
       grid: n,
@@ -251,6 +295,15 @@
   return Object.freeze({
     version,
     wireVersion,
+    supportedWireVersions,
+    capacity,
+    payloadTypes: payload.types,
+    packPayload,
+    unpackPayload,
+    encodePayload,
+    encodePayloadEncrypted,
+    decryptPayload,
+    evaluateCalculation: payload.evaluate,
     maxTextBytes,
     maxImagePixels,
     alphabet: core.alphabet.symbols,

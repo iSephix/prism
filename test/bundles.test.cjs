@@ -15,6 +15,7 @@ function context() {
   const c = vm.createContext({
     TextEncoder,
     TextDecoder,
+    URL,
     performance,
     crypto: globalThis.crypto,
     console,
@@ -81,6 +82,10 @@ test('the actual example worker loads and responds through its public message co
     }
   });
   assert.equal(out[0].result.text, 'Worker transport');
+  c.onmessage({ data: { id: 2, image: P.toRGBA(P.encodePayload('url', 'https://example.com/prism')),
+    options: {}, accumulate: false, burst: false } });
+  assert.equal(out[1].result.kind, 'payload');
+  assert.equal(out[1].result.payload.text, 'https://example.com/prism');
   c.onmessage({
     data: {
       reset: true

@@ -103,10 +103,15 @@
     return out;
   }
 
-  function makeHeader(payload, k, flags) {
+  function capacity(k, n = 145) {
+    const blocks = Math.floor((layout(n).slots.length - HEADER_SYMBOLS) / 19);
+    return Math.floor(blocks * k * LOG / 8);
+  }
+
+  function makeHeader(payload, k, flags, version = 2) {
     const h = new Uint8Array(16),
       d = new DataView(h.buffer);
-    h.set([80, 78, 2, k, flags, 1]);
+    h.set([80, 78, version, k, flags, 1]);
     d.setUint16(6, payload.length);
     d.setUint32(8, P.crc32(payload));
     d.setUint32(12, P.crc32(h.slice(0, 12)));
@@ -123,15 +128,19 @@
     const h = bytesFromDigits(ds, 16);
     if (!h) return null;
     const d = new DataView(h.buffer);
-    if (h[0] !== 80 || h[1] !== 78 || h[2] !== 2 || ![9, 11, 13, 15].includes(h[3]) || h[4] > 1 || h[5] !==
+    if (h[0] !== 80 || h[1] !== 78 || ![2, 3].includes(h[2]) || ![9, 11, 13, 15].includes(h[3]) || h[4] > (h[2] === 2 ? 1 : 3) || h[5] !==
       1 || P.crc32(h.slice(0, 12)) !== d.getUint32(12)) return null;
     const length = d.getUint16(6);
-    if (!length || length > (h[4] ? 1244 : 1200) || (h[4] && length < 45)) return null;
+    const encrypted = !!(h[4] & 1), typed = !!(h[4] & 2);
+    const minimum = (encrypted ? 44 : 0) + (typed ? 4 : 1);
+    const maximum = h[2] === 2 ? (encrypted ? 1244 : 1200) : capacity(h[3], n);
+    if (length < minimum || length > maximum) return null;
     const count = Math.ceil(length * 8 / LOG),
       blocks = Math.ceil(count / h[3]);
     if (HEADER_SYMBOLS + blocks * 19 > layout(n).slots.length) return null;
     return {
       n,
+      version: h[2],
       k: h[3],
       flags: h[4],
       length,
@@ -157,18 +166,23 @@
   function encode(value, ecc = 'Q', options = {}) {
     const payload = options.payload ? Uint8Array.from(options.payload) : utf8.encode(value),
       k = K[ecc];
-    if (!k || !payload.length || payload.length > (options.encrypted ? 1244 : 1200)) throw Error(
-      'Prism 19 supports up to 1200 text bytes plus encryption overhead.');
+    const flags = (options.encrypted ? 1 : 0) | (options.typed ? 2 : 0);
+    const legacyLimit = options.encrypted ? 1244 : 1200;
+    const version = options.wireVersion ?? (options.typed || payload.length > legacyLimit ? 3 : 2);
+    if (!k || ![2, 3].includes(version) || version === 2 && options.typed ||
+        payload.length < (options.encrypted ? 44 : 0) + (options.typed ? 4 : 1) ||
+        payload.length > (version === 2 ? legacyLimit : capacity(k))) throw Error(
+      `Payload exceeds the selected format/correction capacity (${k ? (version === 2 ? legacyLimit : capacity(k)) : 0} bytes).`);
     const ds = digits(payload),
       blocks = Math.ceil(ds.length / k),
       padded = new Uint8Array(blocks * k);
     padded.set(ds);
     let n = 25;
-    while (layout(n).slots.length < HEADER_SYMBOLS + blocks * 19) n += 4;
+    while (n <= 145 && layout(n).slots.length < HEADER_SYMBOLS + blocks * 19) n += 4;
     if (n > 145) throw Error('Code is too large.');
     const l = layout(n),
       cells = new Int16Array(n * n).fill(-1),
-      h = makeHeader(payload, k, options.encrypted ? 1 : 0);
+      h = makeHeader(payload, k, flags, version);
     l.pilots.forEach((cell, i) => cells[cell] = i % 19);
     for (let j = 0; j < 19; j++)
       for (let b = 0; b < 4; b++) cells[l.slots[j * 4 + b]] = h.blocks[b][j];
@@ -187,7 +201,7 @@
     return {
       mode: 'p19',
       ecc,
-      version: 2,
+      version,
       layers: 1,
       n,
       cells,
@@ -203,6 +217,7 @@
       paritySymbols: blocks * (19 - k) + 40,
       digitCount: ds.length,
       encrypted: !!options.encrypted,
+      typed: !!options.typed,
       layout: l
     };
   }
@@ -690,11 +705,13 @@
 
   function makeResult(body, h, start, path, frames = 1) {
     const result = {
-      kind: h.flags ? 'encrypted' : 'prism19',
+      kind: h.flags & 1 ? 'encrypted' : h.flags & 2 ? 'payload' : 'prism19',
       mode: 'p19',
       bytes: body.bytes.length,
       envelope: Array.from(body.bytes),
-      encrypted: !!h.flags,
+      encrypted: !!(h.flags & 1),
+      typed: !!(h.flags & 2),
+      wireVersion: h.version || 2,
       verified: true,
       checksum: h.crc.toString(16).padStart(8, '0'),
       ms: performance.now() - start,
@@ -775,7 +792,7 @@
     function finish(result) {
       result = result || partial || { kind: 'none', mode: 'p19' };
       result.ms = performance.now() - start;
-      if (expired() && !['prism19', 'encrypted'].includes(result.kind)) result.timedOut = true;
+      if (expired() && !['prism19', 'encrypted', 'payload'].includes(result.kind)) result.timedOut = true;
       if (options.diagnostics) result.diagnostics = stats;
       return result;
     }
@@ -906,6 +923,7 @@
     digits,
     bytesFromDigits,
     makeHeader,
+    capacity,
     parseHeader,
     equation,
     observations,

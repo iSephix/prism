@@ -6,14 +6,18 @@
   <link rel="stylesheet" href="style.css"><script defer src="../dist/prism19.js"></script><script defer src="demo.js"></script>
 </head>
 <body>
-  <header><a href="./">prism <strong>19</strong></a><span>Reference demo 0.2.0 · format 2</span></header>
+  <header><a href="./">prism <strong>19</strong></a><span>Reference demo 0.3.0 · formats 2 + 3</span></header>
   <main>
     <div class="intro"><h1>Carry a message in color and shape.</h1><p>Generate here. Scan from another screen or a print. Everything runs on your device.</p></div>
     <div class="workspace">
       <section aria-labelledby="generate-title">
         <div class="section-label">ENCODE</div><h2 id="generate-title">Make a code</h2>
-        <label for="message">Message <small id="byte-count"></small></label>
+        <label for="payload-type">Content</label><select id="payload-type"><option value="text">Text</option><option value="json">JSON data</option><option value="calculation">Calculation</option><option value="url">Web link</option><option value="contact">Contact / vCard</option><option value="image">Image</option><option value="audio">Audio</option><option value="binary">File / raw bytes</option></select>
+        <div id="text-fields"><label for="message">Message</label>
         <textarea id="message" rows="4" spellcheck="false">A message carried by nineteen symbols.</textarea>
+        </div>
+        <div id="payload-file-fields" hidden><label for="payload-file">Choose content to put inside the code</label><input id="payload-file" type="file"><p id="payload-file-info" class="note">Choose a small file.</p><button id="sample-payload" class="secondary">Use a sample</button><label id="image-fit-field" class="check" hidden><input id="image-fit" type="checkbox" checked> Fit large images to the available capacity</label></div>
+        <p id="payload-hint" class="note"></p><p id="byte-count" class="note"></p>
         <div class="row"><div><label for="ecc">Correction</label><select id="ecc"><option>Q</option><option>H</option><option>M</option><option>L</option></select></div><div><label for="scale">Export size</label><select id="scale"><option value="12">12 px / cell</option><option value="20">20 px / cell</option><option value="8">8 px / cell</option></select></div></div>
         <label class="check"><input type="checkbox" id="encrypt"> Encrypt with a passphrase</label>
         <div id="password-field" hidden><label for="password">Passphrase</label><input type="password" id="password" autocomplete="new-password"><p class="note">AES-256-GCM adds 44 bytes. Use a long, unique passphrase.</p></div>
@@ -34,6 +38,8 @@
         <p id="scan-status" class="status" role="status">Ready to scan</p>
         <div id="unlock" hidden><label for="decode-password">Message passphrase</label><input id="decode-password" type="password" autocomplete="off"><button id="decrypt">Decrypt</button></div>
         <pre id="result" hidden></pre><button id="copy" class="secondary" hidden>Copy message</button>
+        <img id="payload-image" class="payload-image" alt="Decoded image" hidden><audio id="payload-audio" controls preload="metadata" hidden></audio>
+        <div class="buttons"><button id="save-payload" class="secondary" hidden>Save recovered file</button><button id="calculate" hidden>Calculate</button><a id="open-link" class="action-link" target="_blank" rel="noopener noreferrer" hidden>Open recovered link</a></div><p id="calculation-result" class="status" role="status" hidden></p>
         <p class="note">Live camera access needs HTTPS or localhost. On a phone, use an HTTPS host. Image files stay on the device.</p>
       </section>
     </div>

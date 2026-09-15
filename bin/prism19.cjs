@@ -10,12 +10,16 @@ const help = `Prism 19 ${P.version} — optical format ${P.wireVersion}
   prism19 encode --text "Hello" --out code.svg
   prism19 encode --input message.txt --out code.png --ecc Q --scale 12
   prism19 encode --text "Secret" --encrypt --passphrase-file key.txt --out code.png
+  prism19 encode --input icon.png --type image --mime image/png --out code.png
+  prism19 encode --text "sqrt(81)+2^8" --type calculation --out math.png
   prism19 decode --input code.png
   prism19 decode --input code.png --passphrase-file key.txt
   prism19 decode --input matrix.json --json
 
 Input/output '-' means stdin/stdout. Encode formats: svg, png, json (matrix).
 --format overrides the output extension; default is svg. --force allows overwrite.
+Typed decode output is the exact recovered file bytes unless --json is used.
+--wire-version 2 forces the legacy profile; otherwise small text stays format 2 and new content uses 3.
 PNG input supports 8-bit non-interlaced images; use the browser demo for JPEG/other PNGs.
 Passphrase files contain UTF-8 text; one final LF or CRLF is removed. No password argv option.
 Exit codes: 0 success, 1 invalid input/I/O/authentication, 2 no complete code, 3 encrypted code needs passphrase.
@@ -66,7 +70,7 @@ async function main() {
     return;
   }
   const switches = new Set(['encrypt', 'json', 'force']),
-    values = new Set(['text', 'input', 'out', 'ecc', 'scale', 'format', 'passphrase-file']);
+    values = new Set(['text', 'input', 'out', 'ecc', 'scale', 'format', 'passphrase-file', 'type', 'mime', 'name', 'wire-version']);
   while (args.length) {
     const token = args.shift();
     if (!token.startsWith('--')) throw Error(`Unexpected argument: ${token}`);
@@ -90,13 +94,14 @@ async function main() {
     '--encrypt requires --passphrase-file.');
     if (options['passphrase-file'] && !options.encrypt) throw Error(
       '--passphrase-file requires --encrypt when encoding.');
-    const text = options.text === undefined ? utf8(read(options.input, 4800)) : options.text,
-      ecc = options.ecc || 'Q';
-    const code = options.encrypt ? await P.encodeEncrypted(text, passphrase, {
-      ecc
-    }) : P.encode(text, {
-      ecc
-    });
+    const type = options.type || 'text', raw = options.text === undefined ? read(options.input, P.maxTextBytes) : options.text;
+    const data = type === 'text' && typeof raw !== 'string' ? utf8(raw) : raw;
+    const settings = { ecc: options.ecc || 'Q',
+      ...(options['wire-version'] ? { wireVersion: Number(options['wire-version']) } : {}),
+      ...(options.mime ? { mimeType: options.mime } : {}),
+      ...(options.name || options.input && options.input !== '-' ? { name: options.name || path.basename(options.input) } : {}) };
+    const code = type === 'text' ? (options.encrypt ? await P.encodeEncrypted(data, passphrase, settings) : P.encode(data, settings)) :
+      options.encrypt ? await P.encodePayloadEncrypted(type, data, passphrase, settings) : P.encodePayload(type, data, settings);
     const out = options.out || '-',
       format = options.format || path.extname(out).slice(1).toLowerCase() || 'svg',
       scale = options.scale === undefined ? 12 : Number(options.scale);
@@ -105,14 +110,14 @@ async function main() {
     else if (format === 'png') encoded = PNG.encode(P.toRGBA(code, scale));
     else if (format === 'json') encoded = JSON.stringify({
       format: 'prism19-matrix',
-      wireVersion: 2,
+      wireVersion: code.version,
       matrix: P.toMatrix(code)
     }, null, 2) + '\n';
     else throw Error('Output format must be svg, png or json.');
     write(out, encoded, options.force);
   } else {
     if (options.text !== undefined || options.encrypt || options.ecc !== undefined || options.scale !==
-      undefined || options.format !== undefined) throw Error(
+      undefined || options.format !== undefined || options.type !== undefined || options.mime !== undefined || options.name !== undefined || options['wire-version'] !== undefined) throw Error(
     'Encoding options are not accepted by decode.');
     if (!options.input) throw Error('Provide --input (- for stdin).');
     const input = read(options.input, 33554432);
@@ -121,7 +126,7 @@ async function main() {
     else {
       if (input.length > 1048576) throw Error('Matrix JSON exceeds 1 MiB.');
       const data = JSON.parse(utf8(input));
-      if (data.format !== 'prism19-matrix' || data.wireVersion !== 2) throw Error(
+      if (data.format !== 'prism19-matrix' || !P.supportedWireVersions.includes(data.wireVersion)) throw Error(
         'Unsupported matrix document.');
       result = P.decodeMatrix(data.matrix);
     }
@@ -132,17 +137,16 @@ async function main() {
       return;
     }
     if (result.kind === 'encrypted' && passphrase !== undefined) result = {
-      ...result,
-      kind: 'prism19',
-      text: await P.decrypt(Uint8Array.from(result.envelope), passphrase),
-      authenticated: true
+      ...result, encrypted: false, authenticated: true,
+      ...(result.typed ? { kind: 'payload', payload: await P.decryptPayload(Uint8Array.from(result.envelope), passphrase) } :
+        { kind: 'prism19', text: await P.decrypt(Uint8Array.from(result.envelope), passphrase) })
     };
     if (result.kind === 'encrypted' && !options.json) {
       process.stderr.write('Encrypted message recovered; provide --passphrase-file to decrypt.\n');
       process.exitCode = 3;
       return;
     }
-    write(options.out || '-', options.json ? JSON.stringify(result) + '\n' : result.text + '\n', options
+    write(options.out || '-', options.json ? JSON.stringify(result, (_, v) => v instanceof Uint8Array ? Array.from(v) : v) + '\n' : result.kind === 'payload' ? Buffer.from(result.payload.data) : result.text + '\n', options
       .force);
   }
 }

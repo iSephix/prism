@@ -4,7 +4,7 @@ const fs = require('node:fs'),
   path = require('node:path');
 const root = path.join(__dirname, '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const source = ['src/crc32.js', 'src/gf19.js', 'src/alphabet19.js', 'src/codec.js', 'src/envelope.js'];
+const source = ['src/crc32.js', 'src/gf19.js', 'src/alphabet19.js', 'src/codec.js', 'src/envelope.js', 'src/payload.js'];
 fs.mkdirSync(path.join(root, 'dist'), {
   recursive: true
 });

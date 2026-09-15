@@ -14,14 +14,15 @@ assert.equal(pkg.license, 'Apache-2.0');
 assert.ok(!pkg.dependencies && !pkg.devDependencies, 'Unexpected installed dependencies');
 for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY.md', 'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md',
     'SECURITY.md', 'spec/FORMAT.md', 'spec/VERSIONING.md', 'spec/reference.py', 'spec/vectors.json',
-    'index.d.ts', 'docs/API.md', 'docs/VALIDATION.md', 'docs/RELEASING.md'
+    'index.d.ts', 'docs/API.md', 'docs/VALIDATION.md', 'docs/RELEASING.md',
+    'spec/FORMAT3.md', 'spec/vectors-v3.json', 'docs/PAYLOADS.md'
   ]) assert.ok(read(file).length > 20, `Missing release file: ${file}`);
 assert.ok(read('LICENSE').includes('Grant of Patent License.'));
 assert.ok(read('NOTICE').includes('jsQR'));
 const provenance = JSON.parse(read('vendor/provenance.json'));
 assert.equal(sha(read('vendor/jsqr-locator.js')), provenance.derivedSHA256);
 assert.equal(sha(read('vendor/jsqr-upstream.js')), provenance.sourceSHA256);
-const sources = ['src/crc32.js', 'src/gf19.js', 'src/alphabet19.js', 'src/codec.js', 'src/envelope.js'];
+const sources = ['src/crc32.js', 'src/gf19.js', 'src/alphabet19.js', 'src/codec.js', 'src/envelope.js', 'src/payload.js'];
 for (const [name, files] of [
     ['prism19-core.js', [...sources, 'src/api.js']],
     ['prism19.js', [...sources, 'vendor/jsqr-locator.js', 'src/api.js']]
@@ -86,6 +87,10 @@ for (const v of JSON.parse(read('spec/vectors.json')).vectors) {
     ecc: v.ecc
   });
   assert.deepEqual(P.toMatrix(c), v.matrix, v.name);
+}
+for (const v of JSON.parse(read('spec/vectors-v3.json')).vectors) {
+  const r = P.decodeMatrix(v.matrix);
+  assert.equal(Buffer.from(r.envelope).toString('hex'), v.payloadHex, v.name);
 }
 console.log(
   `PASS: release metadata, license/provenance, ${files.length} source files, frozen vectors, browser bundles and local links.`

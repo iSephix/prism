@@ -9,7 +9,7 @@ let code = null,
   stream = null,
   cameraToken = 0,
   scanTimer, frameCallback = null, locked = null,
-  message = '';
+  message = '', selectedPayload = null, recoveredPayload = null, payloadURL = null, fileRequest = 0;
 const pending = new Map(),
   options = () => Object.fromEntries(['soft', 'equations', 'spatial', 'refine'].map(k => [k, $(k).checked]));
 
@@ -70,30 +70,32 @@ function download(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 async function generate() {
-  const token = ++generation,
-    text = $('message').value;
-  $('byte-count').textContent = `${new TextEncoder().encode(text).length} / 1200 B`;
-  $('password-field').hidden = !$('encrypt').checked;
+  const token = ++generation, type = $('payload-type').value || 'text', text = $('message').value;
+  const ecc = $('ecc').value, encrypted = $('encrypt').checked;
+  $('password-field').hidden = !encrypted;
   for (const id of ['svg', 'png', 'decode-generated', 'print']) $(id).disabled = true;
-  $('encode-status').textContent = $('encrypt').checked ? 'Encrypting locally…' : '';
+  $('encode-status').textContent = encrypted ? 'Encrypting locally…' : '';
+  $('byte-count').textContent = `Code capacity: ${P.capacity({ ecc })} bytes · ${ecc} correction`;
   try {
-    const result = $('encrypt').checked ? await P.encodeEncrypted(text, $('password').value, {
-      ecc: $('ecc').value
-    }) : P.encode(text, {
-      ecc: $('ecc').value
-    });
+    let result;
+    if (type === 'text') result = encrypted ? await P.encodeEncrypted(text, $('password').value, { ecc }) : P.encode(text, { ecc });
+    else {
+      const isFile = ['image', 'audio', 'binary'].includes(type);
+      if (isFile && !selectedPayload) throw Error('Choose a file or use a sample.');
+      const data = isFile ? selectedPayload.data : text;
+      const options = { ecc, ...(isFile ? { mimeType: selectedPayload.mimeType, name: selectedPayload.name } : {}) };
+      result = encrypted ? await P.encodePayloadEncrypted(type, data, $('password').value, options) : P.encodePayload(type, data, options);
+    }
     if (token !== generation) return;
     code = result;
     $('code').innerHTML = P.toSVG(code);
-    $('code-meta').textContent =
-      `${code.n} × ${code.n} cells · RS(19,${code.k}) · ${code.repairCount} extra recovery equations${code.encrypted?' · encrypted':''}`;
-    $('encode-status').textContent = '';
+    $('byte-count').textContent = `${code.bodyBytes} / ${P.capacity({ ecc })} bytes used, including metadata${encrypted ? ' and encryption' : ''}`;
+    $('code-meta').textContent = `${code.n} × ${code.n} cells · format ${code.version} · ${code.bytes} content bytes${code.typed ? ' · ' + type : ''}${code.encrypted ? ' · encrypted' : ''}`;
+    $('encode-status').textContent = code.n > 85 ? 'Dense code: use the full-size export or a larger print, and keep the camera close.' : '';
     for (const id of ['svg', 'png', 'decode-generated', 'print']) $(id).disabled = false;
   } catch (error) {
     if (token !== generation) return;
-    code = null;
-    $('code').replaceChildren();
-    $('code-meta').textContent = '';
+    code = null; $('code').replaceChildren(); $('code-meta').textContent = '';
     $('encode-status').textContent = error.message;
   }
 }
@@ -111,8 +113,10 @@ $('svg').onclick = () => {
 };
 $('png').onclick = () => {
   if (!code) return;
-  const image = P.toRGBA(code, Number($('scale').value)),
-    canvas = document.createElement('canvas');
+  let image;
+  try { image = P.toRGBA(code, Number($('scale').value)); }
+  catch (error) { $('encode-status').textContent = error.message + ' Choose a smaller PNG scale or export SVG.'; return; }
+  const canvas = document.createElement('canvas');
   canvas.width = image.width;
   canvas.height = image.height;
   canvas.getContext('2d').putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
@@ -122,6 +126,7 @@ $('png').onclick = () => {
 };
 
 function clear() {
+  clearPayload();
   locked = null;
   message = '';
   $('unlock').hidden = true;
@@ -145,6 +150,7 @@ function display(result) {
     $('scan-status').textContent = 'Encrypted bytes recovered. Enter the passphrase.';
     return true;
   }
+  if (result.kind === 'payload') { displayPayload(result.payload); return true; }
   message = result.text;
   $('result').textContent = message;
   $('result').hidden = false;
@@ -312,14 +318,14 @@ $('start').onclick = async () => {
       if (frameTime === lastTime) { schedule(); return; }
       lastTime = frameTime;
       const deep = ++captured % 6 === 0;
-      const scale = Math.min(1, (deep ? 1600 : 1120) / Math.max(v.videoWidth, v.videoHeight));
+      const scale = Math.min(1, (deep ? 1800 : 1120) / Math.max(v.videoWidth, v.videoHeight));
       const width = Math.round(v.videoWidth * scale), height = Math.round(v.videoHeight * scale);
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
       ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
       const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
         snapshot = new Uint8ClampedArray(input.data);
       try {
-        const result = await decode(input, true, captured, deep ? 1000 : 250);
+        const result = await decode(input, true, captured, deep ? 2200 : 250);
         if (token !== cameraToken) return;
         if (display(result)) {
           $('photo').width = canvas.width;
@@ -360,14 +366,15 @@ $('decrypt').onclick = async () => {
   const saved = locked;
   $('decrypt').disabled = true;
   try {
-    const text = await P.decrypt(Uint8Array.from(saved.envelope), $('decode-password').value);
+    const data = Uint8Array.from(saved.envelope), passphrase = $('decode-password').value;
+    const decoded = saved.typed ? { kind: 'payload', payload: await P.decryptPayload(data, passphrase) } :
+      { kind: 'prism19', text: await P.decrypt(data, passphrase) };
     if (locked !== saved) return;
     $('decode-password').value = '';
     locked = null;
     display({
       ...saved,
-      kind: 'prism19',
-      text
+      ...decoded
     });
     $('scan-status').textContent = 'Decrypted locally · AES-GCM tag verified.';
   } catch (error) {
@@ -393,6 +400,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => {
   stop();
   cancelWorker('Page closed.');
+  clearPayload();
 });
 $('alphabet').innerHTML = P.alphabet.map(s =>
   `<div><svg viewBox="0 0 1 1" aria-hidden="true"><rect width="1" height="1" fill="white"/>${Alphabet19.svgSymbol(s,0,0)}</svg><span>${s.id} · ${s.name}</span></div>`
@@ -433,3 +441,128 @@ $('print').onclick = () => {
   $('code').style.setProperty('--print-size', `${width}mm`);
   window.print();
 };
+
+const payloadExamples = {
+  text: 'A message carried by nineteen symbols.',
+  json: '{"project":"Prism 19","reading":23.5,"unit":"°C"}',
+  calculation: 'sqrt(81) + 2^8 / 4',
+  url: 'https://github.com/iSephix/prism',
+  contact: 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Prism Example\r\nEMAIL:hello@example.com\r\nEND:VCARD\r\n'
+};
+$('payload-type').onchange = () => {
+  fileRequest++; selectedPayload = null; $('payload-file').value = '';
+  const type = $('payload-type').value, isFile = ['image', 'audio', 'binary'].includes(type);
+  $('text-fields').hidden = isFile; $('payload-file-fields').hidden = !isFile;
+  $('image-fit-field').hidden = type !== 'image';
+  $('payload-file').accept = type === 'image' ? 'image/*' : type === 'audio' ? 'audio/*' : '';
+  $('payload-file-info').textContent = 'Choose a small file, or try a sample.';
+  $('payload-hint').textContent = type === 'calculation' ? 'Arithmetic, powers, pi/e and functions such as sqrt, sin, log, min and max. Angles are in radians; calculate after scanning.' :
+    type === 'audio' ? 'The audio bytes live inside the code. Use a very short clip; try the sample tone.' :
+    type === 'image' ? 'The image lives inside the code. Large images can be resized locally to fit.' :
+    type === 'binary' ? 'Stores exact bytes, without Base64. Download the original bytes after scanning.' : '';
+  if (!isFile) $('message').value = payloadExamples[type];
+  generate();
+};
+function safeName(name) {
+  const chars = Array.from(name.replace(/[\x00-\x1f\x7f/\\]/g, '_'));
+  while (new TextEncoder().encode(chars.join('')).length > 120) chars.pop();
+  const value = chars.join(''); return !value || value === '.' || value === '..' ? 'payload.bin' : value;
+}
+async function fitImage(file, limit) {
+  const url = URL.createObjectURL(file), image = new Image();
+  try {
+    await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = () => reject(Error('Could not open this image.')); image.src = url; });
+    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+    let edge = Math.min(256, Math.max(image.naturalWidth, image.naturalHeight));
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const ratio = edge / Math.max(image.naturalWidth, image.naturalHeight);
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * ratio)); canvas.height = Math.max(1, Math.round(image.naturalHeight * ratio));
+      ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .72));
+      if (blob && blob.size <= limit) return { data: new Uint8Array(await blob.arrayBuffer()), mimeType: 'image/jpeg', name: 'image.jpg',
+        detail: `Resized to ${canvas.width} × ${canvas.height} pixels` };
+      edge *= .78;
+    }
+    throw Error('This image still does not fit. Try a smaller image or L correction.');
+  } finally { URL.revokeObjectURL(url); }
+}
+$('payload-file').onchange = async event => {
+  const file = event.target.files[0]; if (!file) return;
+  const token = ++fileRequest, type = $('payload-type').value;
+  selectedPayload = null; generation++; clearTimeout(timer);
+  for (const id of ['svg', 'png', 'decode-generated', 'print']) $(id).disabled = true;
+  $('encode-status').textContent = 'Preparing file…';
+  try {
+    if (file.size > 33554432) throw Error('Choose a file smaller than 32 MiB.');
+    const limit = P.capacity({ ecc: $('ecc').value, encrypted: $('encrypt').checked }) - 220;
+    let selected;
+    if (type === 'image' && $('image-fit').checked && (file.size > limit || !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)))
+      selected = await fitImage(file, limit);
+    else {
+      if (file.size > P.capacity({ ecc: $('ecc').value, encrypted: $('encrypt').checked })) throw Error('This file exceeds one code. Use a smaller file or enable image fitting.');
+      const extensions = { wav: 'audio/wav', mp3: 'audio/mpeg', ogg: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', webm: 'audio/webm' };
+      const mimeType = type === 'binary' ? 'application/octet-stream' : type === 'audio' ? extensions[file.name.split('.').pop().toLowerCase()] || file.type : file.type;
+      selected = { data: new Uint8Array(await file.arrayBuffer()), name: safeName(file.name), mimeType };
+    }
+    if (token !== fileRequest) return;
+    selectedPayload = selected;
+    $('payload-file-info').textContent = `${selected.name} · ${selected.data.length} bytes${selected.detail ? ' · ' + selected.detail : ''}`;
+    generate();
+  } catch (error) { if (token === fileRequest) { code = null; $('code').replaceChildren(); $('encode-status').textContent = error.message; } }
+};
+$('sample-payload').onclick = async () => {
+  const token = ++fileRequest, type = $('payload-type').value;
+  if (type === 'image') {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 48;
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 48, 48);
+    const colors = ['#1430e1', '#e02330', '#00bcda', '#ca14a9', '#ee9a0a'];
+    for (let i = 0; i < 5; i++) { ctx.fillStyle = colors[i]; ctx.fillRect(4 + i * 8, 4 + i * 6, 7, 40 - i * 6); }
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) return;
+    const data = new Uint8Array(await blob.arrayBuffer()); if (token !== fileRequest) return;
+    selectedPayload = { data, mimeType: 'image/png', name: 'prism-sample.png' };
+  } else if (type === 'audio') {
+    const samples = 1200, rate = 8000, data = new Uint8Array(44 + samples), view = new DataView(data.buffer);
+    const ascii = (at, text) => Array.from(text).forEach((c, i) => data[at + i] = c.charCodeAt(0));
+    ascii(0, 'RIFF'); view.setUint32(4, data.length - 8, true); ascii(8, 'WAVEfmt '); view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, rate, true); view.setUint32(28, rate, true);
+    view.setUint16(32, 1, true); view.setUint16(34, 8, true); ascii(36, 'data'); view.setUint32(40, samples, true);
+    for (let i = 0; i < samples; i++) data[44 + i] = Math.round(128 + 36 * Math.sin(i * 2 * Math.PI * 660 / rate) * Math.sin(Math.PI * i / samples));
+    selectedPayload = { data, mimeType: 'audio/wav', name: 'prism-tone.wav' };
+  } else selectedPayload = { data: Uint8Array.from({ length: 256 }, (_, i) => i), mimeType: 'application/octet-stream', name: 'all-bytes.bin' };
+  $('payload-file-info').textContent = `${selectedPayload.name} · ${selectedPayload.data.length} bytes`;
+  generate();
+};
+function clearPayload() {
+  recoveredPayload = null;
+  if (payloadURL) URL.revokeObjectURL(payloadURL); payloadURL = null;
+  $('payload-audio').pause(); $('payload-audio').removeAttribute('src'); $('payload-audio').load();
+  $('payload-image').removeAttribute('src');
+  for (const id of ['payload-image', 'payload-audio', 'save-payload', 'calculate', 'calculation-result', 'open-link']) $(id).hidden = true;
+  $('open-link').removeAttribute('href');
+}
+function displayPayload(content) {
+  clearPayload(); recoveredPayload = content; message = content.text || '';
+  $('result').hidden = false; $('result').textContent = content.text ?? `${content.name || content.type} · ${content.data.length} bytes · ${content.mimeType}`;
+  $('copy').hidden = content.text === undefined; $('save-payload').hidden = false; $('unlock').hidden = true;
+  if (content.type === 'image' || content.type === 'audio') {
+    payloadURL = URL.createObjectURL(new Blob([content.data], { type: content.mimeType }));
+    const target = $(content.type === 'image' ? 'payload-image' : 'payload-audio'); target.src = payloadURL; target.hidden = false;
+  }
+  if (content.type === 'calculation') $('calculate').hidden = false;
+  if (content.type === 'url') { $('open-link').href = content.text; $('open-link').hidden = false; }
+  $('scan-status').textContent = `Recovered ${content.type} · ${content.data.length} content bytes`;
+}
+$('save-payload').onclick = () => {
+  if (!recoveredPayload) return;
+  const p = recoveredPayload, ext = { json: 'json', calculation: 'txt', url: 'txt', contact: 'vcf' }[p.type] || 'bin';
+  download(new Blob([p.data], { type: p.mimeType }), p.name || `prism-payload.${ext}`);
+};
+$('calculate').onclick = () => {
+  if (recoveredPayload?.type !== 'calculation') return;
+  $('calculation-result').hidden = false;
+  try { $('calculation-result').textContent = `Result: ${P.evaluateCalculation(recoveredPayload.text)}`; }
+  catch (error) { $('calculation-result').textContent = error.message; }
+};
+
+for (const id of ['payload-image', 'payload-audio']) $(id).onerror = () => { if (recoveredPayload) $('scan-status').textContent = 'File bytes recovered; this browser could not preview the media. You can still save the file.'; };
