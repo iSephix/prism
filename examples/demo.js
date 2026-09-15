@@ -8,7 +8,7 @@ let code = null,
   request = 0,
   stream = null,
   cameraToken = 0,
-  scanTimer, locked = null,
+  scanTimer, frameCallback = null, locked = null,
   message = '';
 const pending = new Map(),
   options = () => Object.fromEntries(['soft', 'equations', 'spatial', 'refine'].map(k => [k, $(k).checked]));
@@ -22,10 +22,11 @@ function getWorker() {
     const p = pending.get(data.id);
     if (!p) return;
     pending.delete(data.id);
+    clearTimeout(p.timeout);
     data.error ? p.reject(Error(data.error)) : p.resolve(data.result);
   };
   worker.onerror = () => {
-    for (const p of pending.values()) p.reject(Error('Decoder worker failed. Please retry.'));
+    for (const p of pending.values()) { clearTimeout(p.timeout); p.reject(Error('Decoder worker failed. Please retry.')); }
     pending.clear();
     worker.terminate();
     worker = null;
@@ -33,23 +34,25 @@ function getWorker() {
   return worker;
 }
 
-function decode(image, accumulate = false) {
+function decode(image, accumulate = false, frameId, maxTimeMs = 2200) {
   return new Promise((resolve, reject) => {
     const id = ++request;
     try {
       const w = getWorker();
       pending.set(id, {
         resolve,
-        reject
+        reject,
+        timeout: setTimeout(() => cancelWorker('This image took too long. Try another frame.'), 8000)
       });
       w.postMessage({
         id,
         image,
-        options: options(),
+        options: { ...options(), frameId, maxTimeMs },
         accumulate,
         burst: $('burst').checked
       }, [image.data.buffer]);
     } catch (error) {
+      clearTimeout(pending.get(id)?.timeout);
       pending.delete(id);
       reject(error);
     }
@@ -71,7 +74,7 @@ async function generate() {
     text = $('message').value;
   $('byte-count').textContent = `${new TextEncoder().encode(text).length} / 1200 B`;
   $('password-field').hidden = !$('encrypt').checked;
-  for (const id of ['svg', 'png', 'decode-generated']) $(id).disabled = true;
+  for (const id of ['svg', 'png', 'decode-generated', 'print']) $(id).disabled = true;
   $('encode-status').textContent = $('encrypt').checked ? 'Encrypting locally…' : '';
   try {
     const result = $('encrypt').checked ? await P.encodeEncrypted(text, $('password').value, {
@@ -85,7 +88,7 @@ async function generate() {
     $('code-meta').textContent =
       `${code.n} × ${code.n} cells · RS(19,${code.k}) · ${code.repairCount} extra recovery equations${code.encrypted?' · encrypted':''}`;
     $('encode-status').textContent = '';
-    for (const id of ['svg', 'png', 'decode-generated']) $(id).disabled = false;
+    for (const id of ['svg', 'png', 'decode-generated', 'print']) $(id).disabled = false;
   } catch (error) {
     if (token !== generation) return;
     code = null;
@@ -97,7 +100,7 @@ async function generate() {
 for (const id of ['message', 'password']) $(id).oninput = () => {
   generation++;
   clearTimeout(timer);
-  for (const b of ['svg', 'png', 'decode-generated']) $(b).disabled = true;
+  for (const b of ['svg', 'png', 'decode-generated', 'print']) $(b).disabled = true;
   timer = setTimeout(generate, 300);
 };
 for (const id of ['ecc', 'encrypt']) $(id).onchange = generate;
@@ -148,13 +151,26 @@ function display(result) {
   $('copy').hidden = false;
   $('unlock').hidden = true;
   $('scan-status').textContent =
-    `Message recovered · ${Math.round(result.ms)} ms · ${result.decoder} · ${result.frames} frame(s)`;
+    `Message recovered · ${Math.round(result.ms)} ms · ${result.frames} frame(s)`;
   return true;
+}
+
+function cancelWorker(reason = 'Scan cancelled.') {
+  worker?.terminate();
+  worker = null;
+  for (const p of pending.values()) { clearTimeout(p.timeout); p.reject(Error(reason)); }
+  pending.clear();
 }
 
 function stop() {
   cameraToken++;
   clearTimeout(scanTimer);
+  if (frameCallback !== null) $('video').cancelVideoFrameCallback?.(frameCallback);
+  frameCallback = null;
+  cancelWorker();
+  $('camera-controls').hidden = true;
+  $('torch').setAttribute('aria-pressed', 'false');
+  $('torch').textContent = 'Light on';
   stream?.getTracks().forEach(t => t.stop());
   stream = null;
   $('video').srcObject = null;
@@ -258,25 +274,52 @@ $('start').onclick = async () => {
     getWorker().postMessage({
       reset: true
     });
+    const track = stream.getVideoTracks()[0];
+    let caps = {};
+    try { caps = track.getCapabilities?.() || {}; } catch { /* Optional hardware controls. */ }
+    $('torch').hidden = !(caps.torch === true || Array.isArray(caps.torch) && caps.torch.includes(true));
+    const zoom = caps.zoom;
+    $('zoom-control').hidden = !(zoom && Number.isFinite(zoom.min) && Number.isFinite(zoom.max) && zoom.max > zoom.min);
+    if (!$('zoom-control').hidden) {
+      $('zoom').min = zoom.min; $('zoom').max = Math.min(zoom.max, Math.max(zoom.min, 8));
+      $('zoom').step = zoom.step || .1;
+      $('zoom').value = track.getSettings().zoom || zoom.min;
+      $('zoom-value').textContent = `${Number($('zoom').value).toFixed(1)}×`;
+    }
+    $('camera-controls').hidden = $('torch').hidden && $('zoom-control').hidden;
+    if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+      try { await cameraConstraint({ focusMode: 'continuous' }, track); } catch { /* Keep the usable stream. */ }
+    }
+    if (token !== cameraToken) return;
     const canvas = document.createElement('canvas'),
-      ctx = canvas.getContext('2d', {
-        willReadFrequently: true
-      });
-    const tick = async () => {
+      ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let lastTime = -1, captured = 0;
+    const schedule = () => {
+      if (token !== cameraToken || !stream) return;
+      if (typeof $('video').requestVideoFrameCallback === 'function')
+        frameCallback = $('video').requestVideoFrameCallback(tick);
+      else scanTimer = setTimeout(tick, 40);
+    };
+    const tick = async (_now, metadata) => {
+      frameCallback = null;
       if (token !== cameraToken || !stream) return;
       const v = $('video');
       if (v.readyState < 2 || !v.videoWidth) {
-        scanTimer = setTimeout(tick, 150);
+        schedule();
         return;
       }
-      const scale = Math.min(1, 1120 / Math.max(v.videoWidth, v.videoHeight));
-      canvas.width = Math.round(v.videoWidth * scale);
-      canvas.height = Math.round(v.videoHeight * scale);
+      const frameTime = metadata?.mediaTime ?? v.currentTime;
+      if (frameTime === lastTime) { schedule(); return; }
+      lastTime = frameTime;
+      const deep = ++captured % 6 === 0;
+      const scale = Math.min(1, (deep ? 1600 : 1120) / Math.max(v.videoWidth, v.videoHeight));
+      const width = Math.round(v.videoWidth * scale), height = Math.round(v.videoHeight * scale);
+      if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
       ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
       const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
         snapshot = new Uint8ClampedArray(input.data);
       try {
-        const result = await decode(input, true);
+        const result = await decode(input, true, captured, deep ? 1000 : 250);
         if (token !== cameraToken) return;
         if (display(result)) {
           $('photo').width = canvas.width;
@@ -294,9 +337,9 @@ $('start').onclick = async () => {
         }
         return;
       }
-      scanTimer = setTimeout(tick, 100);
+      schedule();
     };
-    tick();
+    schedule();
   } catch (error) {
     if (token === cameraToken) {
       stop();
@@ -349,12 +392,44 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => {
   stop();
-  worker?.terminate();
-  worker = null;
-  for (const p of pending.values()) p.reject(Error('Page closed.'));
-  pending.clear();
+  cancelWorker('Page closed.');
 });
 $('alphabet').innerHTML = P.alphabet.map(s =>
   `<div><svg viewBox="0 0 1 1" aria-hidden="true"><rect width="1" height="1" fill="white"/>${Alphabet19.svgSymbol(s,0,0)}</svg><span>${s.id} · ${s.name}</span></div>`
   ).join('');
 generate();
+
+async function cameraConstraint(change, track = stream?.getVideoTracks()[0]) {
+  if (!track || track.readyState === 'ended') throw Error('Camera is not running.');
+  const current = track.getConstraints?.() || {};
+  const advanced = Object.assign({}, ...(current.advanced || []), change);
+  await track.applyConstraints({ ...current, advanced: [advanced] });
+}
+$('torch').onclick = async () => {
+  const token = cameraToken, button = $('torch');
+  const enabled = button.getAttribute('aria-pressed') !== 'true';
+  button.disabled = true;
+  try {
+    await cameraConstraint({ torch: enabled });
+    if (token !== cameraToken) return;
+    button.setAttribute('aria-pressed', String(enabled));
+    button.textContent = enabled ? 'Light off' : 'Light on';
+  } catch { if (token === cameraToken) $('scan-status').textContent = 'Light control is unavailable on this camera.'; }
+  finally { button.disabled = false; }
+};
+$('zoom').oninput = () => $('zoom-value').textContent = `${Number($('zoom').value).toFixed(1)}×`;
+$('zoom').onchange = async () => {
+  const token = cameraToken;
+  try { await cameraConstraint({ zoom: Number($('zoom').value) }); }
+  catch { if (token === cameraToken) $('scan-status').textContent = 'Zoom control is unavailable on this camera.'; }
+};
+$('print').onclick = () => {
+  if (!code) return;
+  const width = Number($('print-size').value);
+  if (!Number.isFinite(width) || width < 20 || width > 200) {
+    $('encode-status').textContent = 'Choose a printed width from 20 to 200 mm.';
+    return;
+  }
+  $('code').style.setProperty('--print-size', `${width}mm`);
+  window.print();
+};

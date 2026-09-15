@@ -18,9 +18,11 @@ Scale is an integer 1–64, subject to the rendered 4-megapixel bound. Very smal
 ```js
 const session = Prism19.createSession();
 
-function onFrame(rgba) {
+function onFrame(rgba, captureId) {
   const result = Prism19.scan(rgba, {
     session,
+    frameId: captureId,
+    maxTimeMs: 250,
     soft: true,
     equations: true,
     spatial: true,
@@ -30,11 +32,13 @@ function onFrame(rgba) {
 }
 ```
 
-Omitting `session` performs a single-image attempt. Keep one session for one live camera flow; call `session.clear()` when switching sources or modes. It retains up to eight scored frames sharing the verified header and grid and resets after a six-second gap. Repeatedly submitting the exact same image is not independent evidence; the caller should submit distinct camera frames.
+Omitting `session` performs a single-image attempt. Keep one session for one live camera flow; call `session.clear()` when switching sources or modes. It retains up to eight scored frames sharing the verified header and grid and resets after a six-second gap. Give each distinct capture a unique nonnegative safe-integer `frameId`: duplicate IDs still in the eight-frame window do not add evidence. Without IDs, each submission counts. Repeatedly submitting the same image under new IDs is not independent evidence.
 
-Input must have positive integer width/height, at most 4096 per side and 4,194,304 pixels total, with an unsigned byte array of exactly `width*height*4` entries. Alpha is composited over white on a copy when necessary. Downsample large camera frames before calling. The included demo uses a worker and at most 1120 pixels on the longer camera dimension.
+With a session, `tracking` defaults to true. A recent grid position can be reused for up to one second, provided image dimensions and locator identity match. The scanner reconstructs and verifies the current frame's header and payload; it does not return a cached message. Failed tracking falls back to finder detection within the budget. `tracking: false` disables this shortcut. Clearing the session clears both pose and accumulated evidence.
 
-`scan()` is synchronous. Run it in a worker to keep the UI responsive and send the next frame after the previous one finishes. The decoder has cooperative search budgets; it cannot forcibly interrupt an external locator or a long-running operation. It first tries the complete hard-decision path, then advanced hypotheses on failures.
+Input must have positive integer width/height, at most 4096 per side and 4,194,304 pixels total, with an unsigned byte array of exactly `width*height*4` entries. Alpha is composited over white on a copy when necessary. Downsample large camera frames before calling. The included demo uses a worker and normally captures at most 1120 pixels on the longer dimension with a 250 ms budget; every sixth new frame uses up to 1600 pixels and 1000 ms. Still images use 2200 ms. The demo submits fresh video frames after each completed attempt and skips duplicate video timestamps.
+
+`scan()` is synchronous. Run it in a worker to keep the UI responsive and send the next frame after the previous one finishes. `maxTimeMs` sets a cooperative search budget from 10 to 10000 milliseconds, default 2200, starting after public input validation and alpha normalization. Checks occur between stages and candidate searches; a locator or individual operation already executing can overrun the budget. This is not a hard wall-clock guarantee. An incomplete result receives `timedOut: true` when the search budget is exhausted. The scanner tries ordinary hard decisions across detected poses before advanced hypotheses, within the budget. A larger budget may improve difficult still-image recovery.
 
 The method returns one of:
 
@@ -45,7 +49,9 @@ The method returns one of:
 | `partial19` | Valid header found, full payload not recovered | Keep scanning; `frames` counts evidence frames |
 | `none` | No accepted complete message/header result | Try a clearer frame |
 
-Success diagnostics include `grid`, `frames`, `ms`, `decoder`, `corrected`, `repaired`, `equations` and `checksum`. `ms` covers this API call, not capture time or previous frames. `frames` counts frames contributing to the successful reconstruction, not every attempted frame. `corrected` is a path-dependent correction diagnostic, not a measured number of physical defects. `repaired` counts data field symbols solved from equations; `equations` counts rows used in the accepted system, including redundant rows. Treat all diagnostics as implementation details for measurement, not protocol signaling.
+Success diagnostics include `grid`, `frames`, `ms`, `decoder`, `corrected`, `repaired`, `equations` and `checksum`. `ms` covers this API call, not capture time or previous frames. `frames` counts frames contributing to the successful reconstruction, not every attempted frame. `corrected` is a path-dependent correction diagnostic, not a measured number of physical defects. `repaired` counts data field symbols solved from equations; `equations` counts rows used in the accepted per-column systems, including redundant rows for consistent systems or the independent basis for candidate systems. All recovered payloads must satisfy the packet CRC and padding checks.
+
+Set `diagnostics: true` to add `result.diagnostics` on any optical scan result. It contains `locateCalls`, `candidates`, `observations`, `tracked` (whether the accepted result used the recent pose), and stage totals `locateMs`, `observeMs`, `classifyMs`, `decodeMs`. Stage times exclude other work such as input normalization and grayscale conversion, so they need not sum to `ms`. Treat diagnostics as measurements, not protocol signaling or evidence of a physical defect count.
 
 ## Supply your own locator
 

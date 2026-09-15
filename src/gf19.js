@@ -21,6 +21,12 @@
     return y;
   };
   const generators = new Map();
+  const powers = Array.from({ length: Q }, (_, x) => {
+    const row = new Uint8Array(Q + 1);
+    row[0] = 1;
+    for (let j = 1; j <= Q; j++) row[j] = row[j - 1] * x % Q;
+    return row;
+  });
 
   function generator(k) {
     if (generators.has(k)) return generators.get(k);
@@ -49,20 +55,26 @@
   // Gauss-Jordan over a prime field, including overdetermined consistency checks.
   function solve(rows, rhs, n) {
     if (rows.length < n) return null;
-    const a = rows.map((r, i) => [...r, mod(rhs[i])]);
+    const a = rows.map((r, i) => {
+      const row = new Uint8Array(n + 1);
+      for (let j = 0; j < n; j++) row[j] = mod(r[j]);
+      row[n] = mod(rhs[i]);
+      return row;
+    });
     let rank = 0;
     const pivots = [];
     for (let c = 0; c < n; c++) {
       let pivot = rank;
-      while (pivot < a.length && !mod(a[pivot][c])) pivot++;
+      while (pivot < a.length && !a[pivot][c]) pivot++;
       if (pivot === a.length) continue;
       [a[pivot], a[rank]] = [a[rank], a[pivot]];
-      const v = inv[mod(a[rank][c])];
-      for (let j = c; j <= n; j++) a[rank][j] = mod(a[rank][j] * v);
+      const v = inv[a[rank][c]];
+      for (let j = c; j <= n; j++) a[rank][j] = a[rank][j] * v % Q;
       for (let i = 0; i < a.length; i++)
         if (i !== rank && a[i][c]) {
           const s = a[i][c];
-          for (let j = c; j <= n; j++) a[i][j] = mod(a[i][j] - s * a[rank][j]);
+          // Both factors are 0..18. Adding 19² keeps the dividend nonnegative.
+          for (let j = c; j <= n; j++) a[i][j] = (a[i][j] - s * a[rank][j] + 361) % Q;
         }
       pivots.push(c);
       rank++;
@@ -93,11 +105,11 @@
       const rows = [],
         rhs = [];
       for (const x of positions) {
-        const powers = [1];
-        for (let j = 1; j < k + t; j++) powers.push(powers[j - 1] * x % 19);
-        const y = received[x];
-        rows.push([...powers.slice(0, k + t), ...powers.slice(0, t).map(v => mod(-y * v))]);
-        rhs.push(y * powers[t] % 19);
+        const px = powers[x], y = received[x], row = new Uint8Array(k + 2 * t);
+        row.set(px.subarray(0, k + t));
+        for (let j = 0; j < t; j++) row[k + t + j] = (361 - y * px[j]) % Q;
+        rows.push(row);
+        rhs.push(y * px[t] % Q);
       }
       const answer = solve(rows, rhs, k + 2 * t);
       if (!answer) continue;
@@ -126,20 +138,13 @@
     return null;
   }
 
-  function candidates(costs, k, soft = true, limit = 5) {
+  function candidates(costs, k, soft = true, limit = 5, deadline = Infinity) {
     const read = costs.map(c => {
       let b = 0;
       for (let s = 1; s < 19; s++)
         if (c[s] < c[b]) b = s;
       return b;
     });
-    const order = costs.map((c, i) => {
-      const sorted = Array.from(c).sort((a, b) => a - b);
-      return {
-        i,
-        margin: sorted[1] - sorted[0]
-      };
-    }).sort((a, b) => a.margin - b.margin);
     const seen = new Set(),
       out = [];
 
@@ -157,20 +162,26 @@
     }
     const hard = decode(read, k);
     add(hard);
-    if (hard && hard.errors === 0) return out;
+    if (!soft || hard && hard.errors === 0) return out;
+    const order = costs.map((c, i) => {
+      let first = Infinity, second = Infinity, alternative = 0;
+      for (let s = 0; s < Q; s++) {
+        if (s !== read[i] && c[s] < second) { second = c[s]; alternative = s; }
+        if (c[s] < first) first = c[s];
+      }
+      return { i, margin: second - first, alternative };
+    }).sort((a, b) => a.margin - b.margin);
     if (soft) {
-      for (let e = 1; e <= 19 - k; e++) add(decode(read, k, order.slice(0, e).map(v => v.i)));
+      for (let e = 1; e <= 19 - k && performance.now() < deadline; e++)
+        add(decode(read, k, order.slice(0, e).map(v => v.i)));
       // Bounded Chase alternatives at the two least reliable observations.
       for (const {
-          i
+          i, alternative
         }
         of order.slice(0, 2)) {
-        const sorted = costs[i].map((v, s) => ({
-          v,
-          s
-        })).sort((a, b) => a.v - b.v);
+        if (performance.now() >= deadline) break;
         const changed = read.slice();
-        changed[i] = sorted[1].s;
+        changed[i] = alternative;
         add(decode(changed, k));
       }
     }

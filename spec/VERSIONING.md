@@ -4,7 +4,7 @@ There are three independent version spaces:
 
 | Value | Current | Meaning |
 |---|---|---|
-| Software package | 0.1.0 | API, tools and implementation release |
+| Software package | 0.2.0 | API, tools and implementation release |
 | Optical wire format | 2 | Header, geometry, glyph meaning, placement and field arithmetic |
 | Optical alphabet | 1 | The fixed ordered set of 19 printed glyphs |
 

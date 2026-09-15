@@ -1,0 +1,366 @@
+{
+  "packageVersion": "0.2.0",
+  "wireVersion": 2,
+  "measuredAt": "2026-09-15T13:26:43.610Z",
+  "runtime": "v24.19.0",
+  "platform": "linux",
+  "physicalTrial": false,
+  "jabComparison": false,
+  "clean": [
+    {
+      "ecc": "L",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 225.458844
+    },
+    {
+      "ecc": "L",
+      "bytes": 34,
+      "grid": 25,
+      "exact": true,
+      "ms": 164.423765
+    },
+    {
+      "ecc": "L",
+      "bytes": 48,
+      "grid": 25,
+      "exact": true,
+      "ms": 217.82607700000005
+    },
+    {
+      "ecc": "L",
+      "bytes": 255,
+      "grid": 33,
+      "exact": true,
+      "ms": 106.296377
+    },
+    {
+      "ecc": "L",
+      "bytes": 1200,
+      "grid": 61,
+      "exact": true,
+      "ms": 177.68199800000002
+    },
+    {
+      "ecc": "M",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 39.75419899999997
+    },
+    {
+      "ecc": "M",
+      "bytes": 34,
+      "grid": 25,
+      "exact": true,
+      "ms": 29.928738000000067
+    },
+    {
+      "ecc": "M",
+      "bytes": 48,
+      "grid": 25,
+      "exact": true,
+      "ms": 27.919398
+    },
+    {
+      "ecc": "M",
+      "bytes": 255,
+      "grid": 37,
+      "exact": true,
+      "ms": 117.12597499999993
+    },
+    {
+      "ecc": "M",
+      "bytes": 1200,
+      "grid": 65,
+      "exact": true,
+      "ms": 210.61908799999992
+    },
+    {
+      "ecc": "Q",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 30.274991
+    },
+    {
+      "ecc": "Q",
+      "bytes": 34,
+      "grid": 25,
+      "exact": true,
+      "ms": 23.82851699999992
+    },
+    {
+      "ecc": "Q",
+      "bytes": 48,
+      "grid": 25,
+      "exact": true,
+      "ms": 58.56764399999997
+    },
+    {
+      "ecc": "Q",
+      "bytes": 255,
+      "grid": 37,
+      "exact": true,
+      "ms": 140.83976200000006
+    },
+    {
+      "ecc": "Q",
+      "bytes": 1200,
+      "grid": 69,
+      "exact": true,
+      "ms": 295.5072329999998
+    },
+    {
+      "ecc": "H",
+      "bytes": 1,
+      "grid": 25,
+      "exact": true,
+      "ms": 19.121561999999813
+    },
+    {
+      "ecc": "H",
+      "bytes": 34,
+      "grid": 25,
+      "exact": true,
+      "ms": 19.043101000000206
+    },
+    {
+      "ecc": "H",
+      "bytes": 48,
+      "grid": 25,
+      "exact": true,
+      "ms": 21.849643000000015
+    },
+    {
+      "ecc": "H",
+      "bytes": 255,
+      "grid": 41,
+      "exact": true,
+      "ms": 71.22986700000001
+    },
+    {
+      "ecc": "H",
+      "bytes": 1200,
+      "grid": 73,
+      "exact": true,
+      "ms": 221.68709799999988
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "Complete RS body block erased",
+      "erasedCells": 19,
+      "withoutEquations": "partial19",
+      "withEquations": "prism19",
+      "repairedSymbols": 11,
+      "equations": 119
+    },
+    {
+      "name": "Complementary damaged frames; equations disabled",
+      "steps": [
+        {
+          "frame": 1,
+          "alone": "partial19",
+          "combined": "partial19",
+          "evidenceFrames": 1
+        },
+        {
+          "frame": 2,
+          "alone": "partial19",
+          "combined": "prism19",
+          "evidenceFrames": 2
+        }
+      ]
+    }
+  ],
+  "synthetic": [
+    {
+      "profile": {
+        "name": "Moderate camera",
+        "pixels": 400,
+        "blur": 0.4,
+        "noise": 5,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 0
+      },
+      "grid": 33,
+      "trials": 4,
+      "frameBudget": 1,
+      "hard": [
+        {
+          "seed": 701,
+          "exact": true,
+          "ms": 53.8538609999996
+        },
+        {
+          "seed": 702,
+          "exact": true,
+          "ms": 44.25053900000057
+        },
+        {
+          "seed": 703,
+          "exact": true,
+          "ms": 48.36698199999955
+        },
+        {
+          "seed": 704,
+          "exact": true,
+          "ms": 50.1129490000003
+        }
+      ],
+      "enhanced": [
+        {
+          "seed": 701,
+          "exact": true,
+          "ms": 52.89999800000078,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 702,
+          "exact": true,
+          "ms": 44.62159299999985,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 703,
+          "exact": true,
+          "ms": 35.17014300000028,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 704,
+          "exact": true,
+          "ms": 56.481628999999884,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "Small blurred camera",
+        "pixels": 220,
+        "blur": 0.8,
+        "noise": 8,
+        "perspective": 0.2,
+        "colorLoss": 0.2,
+        "cover": 0
+      },
+      "grid": 33,
+      "trials": 4,
+      "frameBudget": 1,
+      "hard": [
+        {
+          "seed": 701,
+          "exact": true,
+          "ms": 21.322308000000703
+        },
+        {
+          "seed": 702,
+          "exact": true,
+          "ms": 22.664488999999776
+        },
+        {
+          "seed": 703,
+          "exact": true,
+          "ms": 23.834156999999323
+        },
+        {
+          "seed": 704,
+          "exact": true,
+          "ms": 17.67974200000026
+        }
+      ],
+      "enhanced": [
+        {
+          "seed": 701,
+          "exact": true,
+          "ms": 24.73419599999943,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 702,
+          "exact": true,
+          "ms": 21.135906000000432,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 703,
+          "exact": true,
+          "ms": 19.5284929999998,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 704,
+          "exact": true,
+          "ms": 17.85021400000005,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "profile": {
+        "name": "Patch damage",
+        "pixels": 320,
+        "blur": 0.3,
+        "noise": 4,
+        "perspective": 0.15,
+        "colorLoss": 0.1,
+        "cover": 3
+      },
+      "grid": 33,
+      "trials": 4,
+      "frameBudget": 1,
+      "hard": [
+        {
+          "seed": 701,
+          "exact": false,
+          "ms": 80.7904779999999
+        },
+        {
+          "seed": 702,
+          "exact": true,
+          "ms": 70.93807300000026
+        },
+        {
+          "seed": 703,
+          "exact": false,
+          "ms": 99.27336800000012
+        },
+        {
+          "seed": 704,
+          "exact": false,
+          "ms": 85.78633700000046
+        }
+      ],
+      "enhanced": [
+        {
+          "seed": 701,
+          "exact": true,
+          "ms": 169.1411420000004,
+          "decoder": "soft RS"
+        },
+        {
+          "seed": 702,
+          "exact": true,
+          "ms": 68.94050800000059,
+          "decoder": "hard RS"
+        },
+        {
+          "seed": 703,
+          "exact": true,
+          "ms": 108.18215400000008,
+          "decoder": "soft RS"
+        },
+        {
+          "seed": 704,
+          "exact": true,
+          "ms": 936.9885550000008,
+          "decoder": "soft RS"
+        }
+      ]
+    }
+  ]
+}

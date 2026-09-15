@@ -7,7 +7,7 @@
   } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, () => root.Prism19Locator);
 })(globalThis, function(core, envelope, getDefaultLocator) {
   'use strict';
-  const version = '0.1.0',
+  const version = '0.2.0',
     wireVersion = 2,
     maxTextBytes = 1200,
     maxImagePixels = 4194304;
@@ -136,10 +136,20 @@
   function scanOptions(value) {
     const options = optionsObject(value),
       out = {};
-    for (const key of ['soft', 'equations', 'spatial', 'refine']) {
+    for (const key of ['soft', 'equations', 'spatial', 'refine', 'tracking', 'diagnostics']) {
       if (options[key] !== undefined && typeof options[key] !== 'boolean') throw new TypeError(
         `${key} must be boolean.`);
       if (options[key] !== undefined) out[key] = options[key];
+    }
+    if (options.maxTimeMs !== undefined) {
+      if (!Number.isFinite(options.maxTimeMs) || options.maxTimeMs < 10 || options.maxTimeMs > 10000)
+        throw new RangeError('maxTimeMs must be a number from 10 to 10000.');
+      out.maxTimeMs = options.maxTimeMs;
+    }
+    if (options.frameId !== undefined) {
+      if (!Number.isSafeInteger(options.frameId) || options.frameId < 0)
+        throw new RangeError('frameId must be a nonnegative safe integer.');
+      out.frameId = options.frameId;
     }
     if (options.session !== undefined) {
       if (!options.session || typeof options.session.add !== 'function' || typeof options.session.clear !==
@@ -178,11 +188,12 @@
     const start = performance.now();
     const configured = scanOptions(options),
       input = imageData(image);
-    if (input.width < 25 || input.height < 25) return {
-      kind: 'none',
-      mode: 'p19',
-      ms: performance.now() - start
-    };
+    if (input.width < 25 || input.height < 25) {
+      const result = { kind: 'none', mode: 'p19', ms: performance.now() - start };
+      if (configured.diagnostics) result.diagnostics = { locateCalls: 0, candidates: 0,
+        observations: 0, tracked: false, locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0 };
+      return result;
+    }
     const locate = options && options.locate !== undefined ? options.locate : getDefaultLocator();
     if (typeof locate !== 'function') throw new TypeError(
       'Load the scanner bundle or provide a locate function.');
@@ -191,6 +202,7 @@
       if (!Array.isArray(found)) throw new TypeError('Locator must return an array of grid candidates.');
       return found;
     };
+    configured.locatorKey = locate;
     const result = core.scan(input, configured);
     result.ms = performance.now() - start;
     return result;

@@ -9,7 +9,7 @@ const root = path.join(__dirname, '..'),
   read = file => fs.readFileSync(path.join(root, file), 'utf8'),
   sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const pkg = JSON.parse(read('package.json'));
-assert.equal(pkg.version, '0.1.0');
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
 assert.equal(pkg.license, 'Apache-2.0');
 assert.ok(!pkg.dependencies && !pkg.devDependencies, 'Unexpected installed dependencies');
 for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY.md', 'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md',
@@ -27,7 +27,7 @@ for (const [name, files] of [
     ['prism19.js', [...sources, 'vendor/jsqr-locator.js', 'src/api.js']]
   ]) {
   const expected =
-    '/*! Prism 19 0.1.0 | Apache-2.0 | See LICENSE and NOTICE. */\n(function(){\nconst module=undefined,exports=undefined,define=undefined;\n' +
+    `/*! Prism 19 ${pkg.version} | Apache-2.0 | See LICENSE and NOTICE. */\n(function(){\nconst module=undefined,exports=undefined,define=undefined;\n` +
     files.map(f => `\n/* ${f} */\n` + read(f)).join('\n;\n') + '\n})();\n';
   assert.equal(read('dist/' + name), expected, `${name} is stale; run npm run build`);
   new vm.Script(expected, {
@@ -76,6 +76,9 @@ for (const [, url] of html.matchAll(/(?:src|href)="([^"]+)"/g))
   if (!/^(https?:|#)/.test(url)) assert.ok(fs.existsSync(path.resolve(root, 'examples', url)),
     `Missing demo asset ${url}`);
 const P = require('../index.cjs');
+assert.equal(P.version, pkg.version);
+for (const file of ['index.d.ts', 'index.d.mts', 'index.d.cts'])
+  assert.ok(read(file).includes(`export const version: '${pkg.version}';`), `${file} has a stale version`);
 for (const v of JSON.parse(read('spec/vectors.json')).vectors) {
   const c = v.encrypted ? P.encodeEnvelope(Buffer.from(v.envelopeHex, 'hex'), {
     ecc: v.ecc

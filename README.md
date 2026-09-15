@@ -6,7 +6,9 @@ Prism 19 uses 19 optical symbols, Reed–Solomon correction over GF(19), and spa
 
 It requires a Prism 19-compatible scanner. Existing QR-only camera readers cannot decode this format.
 
-This is the **0.1.0 reference implementation** of **Optical Format 2, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
+This is the **0.2.0 reference implementation** of **Optical Format 2, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
+
+Version 0.2 improves damaged-code recovery, speeds up repeated camera scans and raster exports, and adds camera time budgets, optional light/zoom controls and printing at a chosen physical width. Existing format-2 codes and printed symbols remain compatible. See the [paired benchmarks](docs/BENCHMARKS.md) for measured changes and their limits.
 
 ## Try it
 
@@ -18,7 +20,7 @@ cd prism
 npm run demo
 ```
 
-Open **http://localhost:8080/examples/**. Generate a code, export PNG/SVG, upload a photo or use the camera. Phone cameras need an HTTPS host. To host the demo statically, serve the release directory and open `examples/`; it needs no backend, database, account or remote API.
+Open **http://localhost:8080/examples/**. Generate a code, export PNG/SVG, print at a chosen width, upload a photo or use the camera. Light and zoom controls appear when the camera supports them. Phone cameras need an HTTPS host. To host the demo statically, serve the release directory and open `examples/`; it needs no backend, database, account or remote API.
 
 ## Use the library
 
@@ -84,4 +86,4 @@ See [VALIDATION](docs/VALIDATION.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY
 
 Apache-2.0 covers the implementation, documentation and specification. Retained jsQR geometry is Apache-2.0 with its notices preserved. The package has no installed npm dependencies. See [THIRD_PARTY](THIRD_PARTY.md).
 
-The prototype received a positive report of phone scanning from its user. The release includes reproducible software tests; there is no published controlled phone/print study or JAB comparison. Claims of a universally optimal alphabet, production reliability or superiority over other formats are not established. Current limitations and the physical benchmark procedure are documented in [VALIDATION](docs/VALIDATION.md).
+The prototype's user reported successful scans from another phone's screen and from printed codes, most recently on 2026-09-15. The release includes reproducible software tests; there is no published controlled phone/print study or JAB comparison. Claims of a universally optimal alphabet, production reliability or superiority over other formats are not established. Current limitations and the physical benchmark procedure are documented in [VALIDATION](docs/VALIDATION.md).

@@ -1,4 +1,4 @@
-/*! Prism 19 0.1.0 | Apache-2.0 | See LICENSE and NOTICE. */
+/*! Prism 19 0.2.0 | Apache-2.0 | See LICENSE and NOTICE. */
 (function(){
 const module=undefined,exports=undefined,define=undefined;
 
@@ -53,6 +53,12 @@ const module=undefined,exports=undefined,define=undefined;
     return y;
   };
   const generators = new Map();
+  const powers = Array.from({ length: Q }, (_, x) => {
+    const row = new Uint8Array(Q + 1);
+    row[0] = 1;
+    for (let j = 1; j <= Q; j++) row[j] = row[j - 1] * x % Q;
+    return row;
+  });
 
   function generator(k) {
     if (generators.has(k)) return generators.get(k);
@@ -81,20 +87,26 @@ const module=undefined,exports=undefined,define=undefined;
   // Gauss-Jordan over a prime field, including overdetermined consistency checks.
   function solve(rows, rhs, n) {
     if (rows.length < n) return null;
-    const a = rows.map((r, i) => [...r, mod(rhs[i])]);
+    const a = rows.map((r, i) => {
+      const row = new Uint8Array(n + 1);
+      for (let j = 0; j < n; j++) row[j] = mod(r[j]);
+      row[n] = mod(rhs[i]);
+      return row;
+    });
     let rank = 0;
     const pivots = [];
     for (let c = 0; c < n; c++) {
       let pivot = rank;
-      while (pivot < a.length && !mod(a[pivot][c])) pivot++;
+      while (pivot < a.length && !a[pivot][c]) pivot++;
       if (pivot === a.length) continue;
       [a[pivot], a[rank]] = [a[rank], a[pivot]];
-      const v = inv[mod(a[rank][c])];
-      for (let j = c; j <= n; j++) a[rank][j] = mod(a[rank][j] * v);
+      const v = inv[a[rank][c]];
+      for (let j = c; j <= n; j++) a[rank][j] = a[rank][j] * v % Q;
       for (let i = 0; i < a.length; i++)
         if (i !== rank && a[i][c]) {
           const s = a[i][c];
-          for (let j = c; j <= n; j++) a[i][j] = mod(a[i][j] - s * a[rank][j]);
+          // Both factors are 0..18. Adding 19² keeps the dividend nonnegative.
+          for (let j = c; j <= n; j++) a[i][j] = (a[i][j] - s * a[rank][j] + 361) % Q;
         }
       pivots.push(c);
       rank++;
@@ -125,11 +137,11 @@ const module=undefined,exports=undefined,define=undefined;
       const rows = [],
         rhs = [];
       for (const x of positions) {
-        const powers = [1];
-        for (let j = 1; j < k + t; j++) powers.push(powers[j - 1] * x % 19);
-        const y = received[x];
-        rows.push([...powers.slice(0, k + t), ...powers.slice(0, t).map(v => mod(-y * v))]);
-        rhs.push(y * powers[t] % 19);
+        const px = powers[x], y = received[x], row = new Uint8Array(k + 2 * t);
+        row.set(px.subarray(0, k + t));
+        for (let j = 0; j < t; j++) row[k + t + j] = (361 - y * px[j]) % Q;
+        rows.push(row);
+        rhs.push(y * px[t] % Q);
       }
       const answer = solve(rows, rhs, k + 2 * t);
       if (!answer) continue;
@@ -158,20 +170,13 @@ const module=undefined,exports=undefined,define=undefined;
     return null;
   }
 
-  function candidates(costs, k, soft = true, limit = 5) {
+  function candidates(costs, k, soft = true, limit = 5, deadline = Infinity) {
     const read = costs.map(c => {
       let b = 0;
       for (let s = 1; s < 19; s++)
         if (c[s] < c[b]) b = s;
       return b;
     });
-    const order = costs.map((c, i) => {
-      const sorted = Array.from(c).sort((a, b) => a - b);
-      return {
-        i,
-        margin: sorted[1] - sorted[0]
-      };
-    }).sort((a, b) => a.margin - b.margin);
     const seen = new Set(),
       out = [];
 
@@ -189,20 +194,26 @@ const module=undefined,exports=undefined,define=undefined;
     }
     const hard = decode(read, k);
     add(hard);
-    if (hard && hard.errors === 0) return out;
+    if (!soft || hard && hard.errors === 0) return out;
+    const order = costs.map((c, i) => {
+      let first = Infinity, second = Infinity, alternative = 0;
+      for (let s = 0; s < Q; s++) {
+        if (s !== read[i] && c[s] < second) { second = c[s]; alternative = s; }
+        if (c[s] < first) first = c[s];
+      }
+      return { i, margin: second - first, alternative };
+    }).sort((a, b) => a.margin - b.margin);
     if (soft) {
-      for (let e = 1; e <= 19 - k; e++) add(decode(read, k, order.slice(0, e).map(v => v.i)));
+      for (let e = 1; e <= 19 - k && performance.now() < deadline; e++)
+        add(decode(read, k, order.slice(0, e).map(v => v.i)));
       // Bounded Chase alternatives at the two least reliable observations.
       for (const {
-          i
+          i, alternative
         }
         of order.slice(0, 2)) {
-        const sorted = costs[i].map((v, s) => ({
-          v,
-          s
-        })).sort((a, b) => a.v - b.v);
+        if (performance.now() >= deadline) break;
         const changed = read.slice();
-        changed[i] = sorted[1].s;
+        changed[i] = alternative;
         add(decode(changed, k));
       }
     }
@@ -594,26 +605,36 @@ const module=undefined,exports=undefined,define=undefined;
     return out + `<path d="${path.join('')}" fill="black"/></svg>`;
   }
 
+  const atlases = new Map();
   function raster(code, size = 12) {
-    const width = Math.round(code.width * size),
-      height = Math.round(code.height * size),
-      data = new Uint8ClampedArray(width * height * 4);
-    for (let y = 0, p = 0; y < height; y++)
-      for (let x = 0; x < width; x++, p += 4) {
-        const c = colorAt(code, (x + .5) / size, (y + .5) / size);
-        data[p] = c[0];
-        data[p + 1] = c[1];
-        data[p + 2] = c[2];
-        data[p + 3] = 255;
-      }
-    return {
-      data,
-      width,
-      height
-    };
+    let atlas = atlases.get(size);
+    if (!atlas) {
+      atlas = Array.from({ length: 20 }, (_, symbol) => Array.from({ length: size }, (_, y) => {
+        const row = new Uint8ClampedArray(size * 4);
+        for (let x = 0; x < size; x++) {
+          const rgb = symbol === 19 ? [0, 0, 0] :
+            A.pixel(A.symbols[symbol], (x + .5) / size, (y + .5) / size);
+          row[x * 4] = rgb[0]; row[x * 4 + 1] = rgb[1]; row[x * 4 + 2] = rgb[2];
+          row[x * 4 + 3] = 255;
+        }
+        return row;
+      }));
+      if (atlases.size >= 4) atlases.delete(atlases.keys().next().value);
+      atlases.set(size, atlas);
+    }
+    const width = code.width * size, height = code.height * size;
+    const data = new Uint8ClampedArray(width * height * 4).fill(255);
+    for (let y = 0; y < code.n; y++) for (let x = 0; x < code.n; x++) {
+      const cell = y * code.n + x, fixed = code.layout.fixed[cell];
+      if (fixed === 0) continue;
+      const tile = atlas[fixed === 1 ? 19 : code.cells[cell]];
+      for (let row = 0; row < size; row++)
+        data.set(tile[row], (((y + 4) * size + row) * width + (x + 4) * size) * 4);
+    }
+    return { data, width, height };
   }
 
-  function sample(image, p) {
+  function sample(image, p, out = [0, 0, 0]) {
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
     const x = p.x - .5,
       y = p.y - .5,
@@ -622,7 +643,7 @@ const module=undefined,exports=undefined,define=undefined;
       fx = x - ix,
       fy = y - iy;
     if (ix < 0 || iy < 0 || ix + 1 >= image.width || iy + 1 >= image.height) return null;
-    const out = [0, 0, 0];
+    out[0] = out[1] = out[2] = 0;
     for (let dy = 0; dy < 2; dy++)
       for (let dx = 0; dx < 2; dx++) {
         const w = (dx ? fx : 1 - fx) * (dy ? fy : 1 - fy),
@@ -647,13 +668,14 @@ const module=undefined,exports=undefined,define=undefined;
       white = whites.map(([x, y]) => sample(image, map(x, y)));
     if ([...dark, ...white].some(v => !v)) return null;
     if (white.some((v, i) => v.reduce((s, c, j) => s + c - dark[i][j], 0) < 160)) return null;
-    return (rgb, x, y) => rgb.map((v, c) => {
-      const u = (x - 3.5) / (n - 7),
-        w = (y - 3.5) / (n - 7),
-        d = dark[0][c] + u * (dark[1][c] - dark[0][c]) + w * (dark[2][c] - dark[0][c]),
+    return (rgb, x, y, out, offset) => {
+      const u = (x - 3.5) / (n - 7), w = (y - 3.5) / (n - 7);
+      for (let c = 0; c < 3; c++) {
+        const v = rgb[c], d = dark[0][c] + u * (dark[1][c] - dark[0][c]) + w * (dark[2][c] - dark[0][c]),
         b = white[0][c] + u * (white[1][c] - white[0][c]) + w * (white[2][c] - white[0][c]);
-      return Math.max(-40, Math.min(295, 255 * (v - d) / Math.max(55, b - d)));
-    });
+        out[offset + c] = Math.max(-40, Math.min(295, 255 * (v - d) / Math.max(55, b - d)));
+      }
+    };
   }
 
   function observations(image, location, shift = [0, 0]) {
@@ -661,47 +683,56 @@ const module=undefined,exports=undefined,define=undefined;
       l = layout(n),
       norm = photometry(image, location.map, n);
     if (!norm) return null;
-    const data = new Float32Array(n * n * FEATURES);
-    for (let y = 0; y < n; y++)
-      for (let x = 0; x < n; x++)
+    const data = new Float32Array(n * n * FEATURES), rgb = [0, 0, 0];
+    for (const cell of [...l.pilots, ...l.slots]) {
+      const y = Math.floor(cell / n), x = cell % n;
         for (let dy = 0; dy < SAMPLES; dy++)
           for (let dx = 0; dx < SAMPLES; dx++) {
             const u = x + (dx + .5) / SAMPLES + shift[0],
               v = y + (dy + .5) / SAMPLES + shift[1],
-              rgb = sample(image, location.map(u, v));
-            if (!rgb) return null;
+              sampled = sample(image, location.map(u, v), rgb);
+            if (!sampled) return null;
             const p = (y * n + x) * FEATURES + (dy * SAMPLES + dx) * 3;
-            data.set(norm(rgb, u, v), p);
+            norm(rgb, u, v, data, p);
           }
-    const refs = Array.from({
-      length: 19
-    }, () => new Float32Array(FEATURES));
+    }
+    const obs = { n, layout: l, data, shift };
+    return calibrate(obs);
+  }
+
+  function calibrate(obs, robust = false) {
+    const { data, layout: l } = obs;
+    const refs = Array.from({ length: 19 }, () => new Float32Array(FEATURES));
+    const variances = [];
     let residual = 0;
-    l.pilots.forEach((cell, i) => {
-      for (let f = 0; f < FEATURES; f++) refs[i % 19][f] += data[cell * FEATURES + f] / 2;
-    });
-    l.pilots.forEach((cell, i) => {
-      for (let f = 0; f < FEATURES; f++) residual += (data[cell * FEATURES + f] - refs[i % 19][f]) ** 2;
-    });
-    residual /= PILOTS * FEATURES;
-    // The calibrated glyphs must retain both dark strokes and separable structure.
-    let separation = Infinity;
-    for (let i = 0; i < 19; i++)
-      for (let j = 0; j < i; j++) {
-        let d = 0;
-        for (let f = 0; f < FEATURES; f++) d += (refs[i][f] - refs[j][f]) ** 2;
-        separation = Math.min(separation, d / FEATURES);
+    for (let s = 0; s < 19; s++) {
+      const a = l.pilots[s] * FEATURES, b = l.pilots[s + 19] * FEATURES;
+      let ea = 0, eb = 0;
+      for (let f = 0; f < FEATURES; f++) {
+        ea += (255 - data[a + f]) ** 2;
+        eb += (255 - data[b + f]) ** 2;
       }
-    if (separation < 70) return null;
-    return {
-      n,
-      layout: l,
-      data,
-      refs,
-      noise: Math.max(100, residual * 1.2),
-      separation,
-      shift
-    };
+      // A white occlusion/glare patch can erase just one of a symbol's pilots.
+      // Keep ordinary averaging as the primary model; reject washed-out pilots
+      // only in this bounded fallback, never inventing a new optical symbol.
+      const rejectA = robust && ea < eb * .3, rejectB = robust && eb < ea * .3;
+      let variance = 0;
+      for (let f = 0; f < FEATURES; f++) {
+        refs[s][f] = rejectA ? data[b + f] : rejectB ? data[a + f] :
+          data[a + f] / 2 + data[b + f] / 2;
+        variance += ((data[a + f] - refs[s][f]) ** 2 + (data[b + f] - refs[s][f]) ** 2) / 2;
+      }
+      variances.push(variance / FEATURES);
+      residual += variance / FEATURES;
+    }
+    residual = robust ? variances.sort((a, b) => a - b)[9] : residual / 19;
+    let separation = Infinity;
+    for (let i = 0; i < 19; i++) for (let j = 0; j < i; j++) {
+      let d = 0;
+      for (let f = 0; f < FEATURES; f++) d += (refs[i][f] - refs[j][f]) ** 2;
+      separation = Math.min(separation, d / FEATURES);
+    }
+    return { ...obs, refs, noise: Math.max(100, residual * 1.2), separation, robust };
   }
   const cellBest = (costs, cell) => {
     let best = 0;
@@ -711,70 +742,67 @@ const module=undefined,exports=undefined,define=undefined;
   };
 
   function classify(obs, mixing = 0, prior = null) {
-    const {
-      n,
-      layout: l,
-      data,
-      noise
-    } = obs;
+    const { n, layout: l, data, noise } = obs;
+    const cells = [...l.pilots, ...l.slots], spatial = mixing && prior;
     let refs = obs.refs;
-    // Approximate joint spatial model: edge observations contain neighboring-cell ink.
-    function neighbors(cell, f) {
-      const x = cell % n,
-        y = Math.floor(cell / n),
-        pixel = Math.floor(f / 3),
-        sx = pixel % 4,
-        sy = Math.floor(pixel / 4),
-        c = f % 3,
-        out = [];
-      if (sx === 0 && x > 0) out.push([cell - 1, (sy * 4 + 3) * 3 + c]);
-      if (sx === 3 && x < n - 1) out.push([cell + 1, sy * 12 + c]);
-      if (sy === 0 && y > 0) out.push([cell - n, (12 + sx) * 3 + c]);
-      if (sy === 3 && y < n - 1) out.push([cell + n, sx * 3 + c]);
-      return out;
+    // A neighboring cell's symbol is independent of the glyph being scored.
+    // Resolve it once, instead of repeating argmin inside every feature comparison.
+    const best = spatial ? new Int8Array(n * n) : null;
+    if (spatial) {
+      for (const cell of l.slots) best[cell] = cellBest(prior, cell);
+      l.pilots.forEach((cell, i) => best[cell] = i % 19);
     }
-
+    const spill = new Float64Array(FEATURES), weight = new Float64Array(FEATURES);
     function predicted(cell, f, source) {
-      if (l.fixed[cell] >= 0) return l.fixed[cell] ? 0 : 255;
-      const pilot = l.pilots.indexOf(cell);
-      const s = pilot >= 0 ? pilot % 19 : cellBest(prior, cell);
-      return source[s][f];
+      return l.fixed[cell] >= 0 ? (l.fixed[cell] ? 0 : 255) : source[best[cell]][f];
     }
-    if (mixing && prior) {
+    function neighbors(cell, source) {
+      const x = cell % n, y = Math.floor(cell / n);
+      for (let sy = 0; sy < 4; sy++) for (let sx = 0; sx < 4; sx++) {
+        let count = 0;
+        if (sx === 0 && x > 0) count++;
+        if (sx === 3 && x < n - 1) count++;
+        if (sy === 0 && y > 0) count++;
+        if (sy === 3 && y < n - 1) count++;
+        for (let c = 0; c < 3; c++) {
+          const f = (sy * 4 + sx) * 3 + c;
+          let sum = 0;
+          if (sx === 0 && x > 0) sum += predicted(cell - 1, (sy * 4 + 3) * 3 + c, source);
+          if (sx === 3 && x < n - 1) sum += predicted(cell + 1, sy * 12 + c, source);
+          if (sy === 0 && y > 0) sum += predicted(cell - n, (12 + sx) * 3 + c, source);
+          if (sy === 3 && y < n - 1) sum += predicted(cell + n, sx * 3 + c, source);
+          spill[f] = mixing * sum;
+          weight[f] = 1 - mixing * count;
+        }
+      }
+    }
+    if (spatial) {
       const intrinsic = refs.map(() => new Float32Array(FEATURES));
       l.pilots.forEach((cell, i) => {
-        for (let f = 0; f < FEATURES; f++) {
-          const near = neighbors(cell, f);
-          let sum = 0;
-          for (const [c, j] of near) sum += predicted(c, j, refs);
-          intrinsic[i % 19][f] += (data[cell * FEATURES + f] - mixing * sum) / (1 - mixing * near
-            .length) / 2;
-        }
+        neighbors(cell, refs);
+        for (let f = 0; f < FEATURES; f++)
+          intrinsic[i % 19][f] += (data[cell * FEATURES + f] - spill[f]) / weight[f] / 2;
       });
       refs = intrinsic;
     }
     const out = new Float32Array(n * n * 19);
-    for (const cell of [...l.pilots, ...l.slots]) {
+    for (const cell of cells) {
+      if (spatial) neighbors(cell, refs);
       let min = Infinity;
       for (let s = 0; s < 19; s++) {
         let d = 0;
+        const ref = refs[s], offset = cell * FEATURES;
         for (let f = 0; f < FEATURES; f++) {
-          let expected = refs[s][f];
-          if (mixing && prior) {
-            const near = neighbors(cell, f);
-            let sum = 0;
-            for (const [c, j] of near) sum += predicted(c, j, refs);
-            expected = expected * (1 - mixing * near.length) + mixing * sum;
-          }
-          d += (data[cell * FEATURES + f] - expected) ** 2;
+          const expected = spatial ? ref[f] * weight[f] + spill[f] : ref[f];
+          d += (data[offset + f] - expected) ** 2;
         }
         d /= FEATURES;
         out[cell * 19 + s] = d;
         min = Math.min(min, d);
       }
       const reliability = 1 / (1 + min / (noise * 3));
-      for (let s = 0; s < 19; s++) out[cell * 19 + s] = Math.min(24, (out[cell * 19 + s] - min) / (noise *
-        2)) * reliability;
+      for (let s = 0; s < 19; s++)
+        out[cell * 19 + s] = Math.min(24, (out[cell * 19 + s] - min) / (noise * 2)) * reliability;
     }
     return out;
   }
@@ -801,14 +829,14 @@ const module=undefined,exports=undefined,define=undefined;
     return beam;
   }
 
-  function headerFromScores(scores, n, soft = true) {
+  function headerFromScores(scores, n, soft = true, deadline = Infinity) {
     const l = layout(n),
       lists = [];
     for (let b = 0; b < 4; b++) {
       const costs = Array.from({
         length: 19
       }, (_, j) => costsAt(scores, l.slots[j * 4 + b]));
-      const c = F.candidates(costs, 9, soft, 3);
+      const c = F.candidates(costs, 9, soft, 3, deadline);
       if (!c.length) return null;
       lists.push(c);
     }
@@ -827,49 +855,98 @@ const module=undefined,exports=undefined,define=undefined;
     return bytes && P.crc32(bytes) === h.crc ? bytes : null;
   }
 
-  function repairEquations(scores, h, known) {
-    const unknown = [];
-    for (let i = 0; i < known.length; i++)
-      if (known[i] < 0) unknown.push(i);
-    if (!unknown.length || unknown.length > 96) return null;
-    const columns = new Map(unknown.map((v, i) => [v, i])),
-      l = layout(h.n),
-      start = HEADER_SYMBOLS + h.blocks * 19,
-      rows = [];
+  function repairEquations(scores, h, known, deadline = Infinity) {
+    const groups = Array.from({ length: h.k }, () => ({ positions: [], rows: [] }));
+    const columns = new Map();
+    for (let i = 0; i < known.length; i++) if (known[i] < 0) {
+      const group = groups[i % h.k];
+      columns.set(i, group.positions.length);
+      group.positions.push(i);
+    }
+    const unknown = columns.size;
+    if (!unknown || unknown > 96) return null;
+    const l = layout(h.n), start = HEADER_SYMBOLS + h.blocks * 19;
     for (let e = 0; e < l.slots.length - start; e++) {
-      const cell = l.slots[start + e],
-        c = costsAt(scores, cell),
-        s = cellBest(scores, cell),
-        sorted = c.slice().sort((a, b) => a - b),
-        margin = sorted[1] - sorted[0];
+      const group = groups[e % h.k];
+      if (!group.positions.length) continue;
+      const cell = l.slots[start + e], symbol = cellBest(scores, cell);
+      let second = Infinity;
+      for (let j = 0; j < 19; j++) if (j !== symbol) second = Math.min(second, scores[cell * 19 + j]);
+      const margin = second - scores[cell * 19 + symbol];
       if (margin < .8) continue;
-      const row = new Uint8Array(unknown.length);
-      let rhs = s;
+      const row = new Uint8Array(group.positions.length);
+      let rhs = symbol;
       for (const t of equation(e, h.blocks, h.k)) {
-        if (columns.has(t.index)) row[columns.get(t.index)] = F.mod(row[columns.get(t.index)] + t
-          .coefficient);
+        if (columns.has(t.index)) row[columns.get(t.index)] = t.coefficient;
         else rhs = F.mod(rhs - t.coefficient * known[t.index]);
       }
-      if (row.some(v => v)) rows.push({
-        row,
-        rhs,
-        margin
-      });
+      if (row.some(v => v)) group.rows.push({ row, rhs, margin });
     }
-    rows.sort((a, b) => b.margin - a.margin);
-    // Prefer reliable equations; bounded alternatives exclude a few suspect rows.
-    for (let skip = 0; skip < Math.min(8, Math.max(1, rows.length - unknown.length + 1)); skip++) {
-      const used = rows.filter((_, i) => skip === 0 || i !== rows.length - skip),
-        answer = F.solve(used.map(r => r.row), used.map(r => r.rhs), unknown.length);
-      if (!answer) continue;
+    // Each equation connects one data column across blocks. Solve these small
+    // systems independently; one bad optical equation must not poison every row.
+    function independent(rows, n, skip) {
+      const basis = new Array(n);
+      let rank = 0;
+      for (let i = 0; i < rows.length; i++) {
+        if (i === skip) continue;
+        const a = new Uint8Array(n + 1);
+        a.set(rows[i].row); a[n] = rows[i].rhs;
+        for (let c = 0; c < n; c++) {
+          if (!a[c]) continue;
+          if (basis[c]) {
+            const factor = a[c];
+            for (let j = c; j <= n; j++) a[j] = (a[j] - factor * basis[c][j] + 361) % 19;
+          } else {
+            const factor = F.inv[a[c]];
+            for (let j = c; j <= n; j++) a[j] = a[j] * factor % 19;
+            basis[c] = a; rank++; break;
+          }
+        }
+        if (rank === n) {
+          const answer = new Uint8Array(n);
+          for (let c = n - 1; c >= 0; c--) {
+            let v = basis[c][n];
+            for (let j = c + 1; j < n; j++) v -= basis[c][j] * answer[j];
+            answer[c] = F.mod(v);
+          }
+          return answer;
+        }
+      }
+      return null;
+    }
+    const active = groups.filter(g => g.positions.length), lists = [];
+    for (const group of active) {
+      if (performance.now() >= deadline) return null;
+      const rows = group.rows.sort((a, b) => b.margin - a.margin), n = group.positions.length;
+      if (rows.length < n) return null;
+      const choices = [], seen = new Set();
+      function add(answer, used) {
+        if (!answer) return;
+        const key = Array.from(answer).join(',');
+        if (seen.has(key)) return;
+        seen.add(key);
+        let score = 0;
+        for (const r of rows) {
+          let predicted = 0;
+          for (let i = 0; i < n; i++) predicted += r.row[i] * answer[i];
+          if (predicted % 19 !== r.rhs) score += r.margin;
+        }
+        choices.push({ data: answer, score, used });
+      }
+      add(F.solve(rows.map(r => r.row), rows.map(r => r.rhs), n), rows.length);
+      if (!choices.length) {
+        add(independent(rows, n, -1), n);
+        for (let skip = 0; skip < Math.min(8, rows.length) && performance.now() < deadline; skip++)
+          add(independent(rows, n, skip), n);
+      }
+      if (!choices.length) return null;
+      lists.push(choices.sort((a, b) => a.score - b.score).slice(0, 3));
+    }
+    for (const state of combinations(lists, 24)) {
       const ds = known.slice();
-      unknown.forEach((pos, i) => ds[pos] = answer[i]);
+      active.forEach((group, c) => group.positions.forEach((p, i) => ds[p] = state.parts[c].data[i]));
       const bytes = checkPacket(ds, h);
-      if (bytes) return {
-        bytes,
-        repaired: unknown.length,
-        equations: used.length
-      };
+      if (bytes) return { bytes, repaired: unknown, equations: state.parts.reduce((n, c) => n + c.used, 0) };
     }
     return null;
   }
@@ -894,13 +971,7 @@ const module=undefined,exports=undefined,define=undefined;
       }
       allCosts.push(costs);
       hardLists.push(hard);
-      trust.push({
-        block: b,
-        margin: costs.reduce((sum, c) => {
-          const s = c.slice().sort((a, b) => a - b);
-          return sum + s[1] - s[0];
-        }, 0) / 19
-      });
+
     }
     if (hardKnown.every(v => v >= 0)) {
       const bytes = checkPacket(Array.from(hardKnown), h);
@@ -911,8 +982,11 @@ const module=undefined,exports=undefined,define=undefined;
         path: 'hard RS'
       };
     }
+    const deadline = options.deadline ?? Infinity;
     for (let b = 0; b < h.blocks; b++) {
-      const c = options.soft === false ? hardLists[b] : F.candidates(allCosts[b], h.k, true, 4);
+      if (performance.now() >= deadline) return null;
+      const c = options.soft === false || hardLists[b][0]?.errors === 0 ? hardLists[b] :
+        F.candidates(allCosts[b], h.k, true, 4, deadline);
       lists.push(c);
       if (c.length) corrected += c[0].errors + c[0].erasures;
     }
@@ -928,12 +1002,32 @@ const module=undefined,exports=undefined,define=undefined;
     }
     if (options.equations !== false) {
       const known = Array.from(hardKnown),
-        r = repairEquations(scores, h, known);
+        r = repairEquations(scores, h, known, deadline);
       if (r) return {
         ...r,
         corrected,
         path: 'repair equations'
       };
+      const softKnown = known.slice();
+      lists.forEach((list, b) => {
+        if (list.length) for (let i = 0; i < h.k; i++) softKnown[b * h.k + i] = list[0].data[i];
+      });
+      if (softKnown.some((v, i) => v !== known[i])) {
+        const result = repairEquations(scores, h, softKnown, deadline);
+        if (result) return { ...result, corrected, path: 'soft RS + repair equations' };
+      }
+      for (let b = 0; b < h.blocks; b++) {
+        let margin = 0;
+        for (const costs of allCosts[b]) {
+          let first = Infinity, second = Infinity;
+          for (const v of costs) {
+            if (v < first) { second = first; first = v; }
+            else if (v < second) second = v;
+          }
+          margin += second - first;
+        }
+        trust.push({ block: b, margin: margin / 19 });
+      }
       // A blank block can masquerade as a valid constant RS codeword. Use optical
       // confidence to erase suspect blocks, then let independent equations resolve them.
       trust.sort((a, b) => a.margin - b.margin);
@@ -942,10 +1036,11 @@ const module=undefined,exports=undefined,define=undefined;
       if (worst.length > 1) hypotheses.push(worst.slice(0, 2));
       if (worst.length > 2) hypotheses.push(worst);
       for (const erased of hypotheses) {
+        if (performance.now() >= deadline) return null;
         const tentative = known.slice();
         for (const b of erased)
           for (let i = 0; i < h.k; i++) tentative[b * h.k + i] = -1;
-        const result = repairEquations(scores, h, tentative);
+        const result = repairEquations(scores, h, tentative, deadline);
         if (result) return {
           ...result,
           corrected,
@@ -1000,22 +1095,28 @@ const module=undefined,exports=undefined,define=undefined;
     return result;
   }
 
+  const sessions = new WeakMap();
   function createSession() {
     let entry = null;
-    return {
+    const state = { pose: null };
+    const session = {
       clear() {
         entry = null;
+        state.pose = null;
       },
-      add(scores, header) {
+      add(scores, header, frameId) {
         const now = Date.now();
         if (!entry || entry.key !== header.key || now - entry.time > 6000) entry = {
           key: header.key,
           time: now,
-          items: []
+          items: [], ids: []
         };
         entry.time = now;
-        entry.items.push(Float32Array.from(scores));
-        if (entry.items.length > 8) entry.items.shift();
+        if (frameId === undefined || !entry.ids.includes(frameId)) {
+          entry.items.push(Float32Array.from(scores));
+          entry.ids.push(frameId);
+          if (entry.items.length > 8) { entry.items.shift(); entry.ids.shift(); }
+        }
         const combined = new Float32Array(scores.length);
         for (const a of entry.items)
           for (let i = 0; i < a.length; i++) combined[i] += a[i];
@@ -1025,102 +1126,147 @@ const module=undefined,exports=undefined,define=undefined;
         };
       }
     };
+    sessions.set(session, state);
+    return session;
   }
 
   function scan(image, options = {}) {
-    if (typeof options.locate !== "function") throw new TypeError(
-      "An image locator is required; use the public scan() API or supply options.locate.");
-    const start = performance.now();
-    let partial = null,
-      fusedThisFrame = false;
-    // Preserve the complete fast decoder across ALL detected poses before allowing
-    // costly soft hypotheses to consume the enhanced-search budget.
-    if (options.soft !== false || options.equations !== false || options.spatial !== false || options
-      .refine !== false) {
-      const fast = scan(image, {
-        ...options,
-        soft: false,
-        equations: false,
-        spatial: false,
-        refine: false,
-        session: null
-      });
-      if (fast.kind === 'prism19' || fast.kind === 'encrypted') {
-        fast.ms = performance.now() - start;
-        return fast;
-      }
+    if (typeof options.locate !== 'function') throw new TypeError(
+      'An image locator is required; use the public scan() API or supply options.locate.');
+    const start = performance.now(), deadline = start + (options.maxTimeMs ?? 2200);
+    const stats = { locateCalls: 0, candidates: 0, observations: 0, tracked: false,
+      locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0 };
+    const hard = { soft: false, equations: false }, advanced = options.soft !== false ||
+      options.equations !== false || options.spatial !== false || options.refine !== false;
+    const state = sessions.get(options.session), poses = [];
+    let partial = null, fusedThisFrame = false;
+    const expired = () => performance.now() >= deadline;
+    function measured(key, fn) {
+      const t = performance.now();
+      try { return fn(); } finally { stats[key] += performance.now() - t; }
     }
-    const searchStart = performance.now();
+    function finish(result) {
+      result = result || partial || { kind: 'none', mode: 'p19' };
+      result.ms = performance.now() - start;
+      if (expired() && !['prism19', 'encrypted'].includes(result.kind)) result.timedOut = true;
+      if (options.diagnostics) result.diagnostics = stats;
+      return result;
+    }
+    function remember(location) {
+      if (state && options.tracking !== false) state.pose = { location, time: Date.now(),
+        width: image.width, height: image.height, locator: options.locatorKey || options.locate };
+    }
+    function observe(location, shift = [0, 0]) {
+      stats.observations++;
+      return measured('observeMs', () => observations(image, location, shift));
+    }
+    function score(obs, mixing = 0, prior = null) {
+      return measured('classifyMs', () => classify(obs, mixing, prior));
+    }
+    function header(scores, n, soft) {
+      return measured('decodeMs', () => headerFromScores(scores, n, soft, deadline));
+    }
+    function body(scores, h, config) {
+      return measured('decodeMs', () => bodyFromScores(scores, h, config));
+    }
+    function recognized(h, location) {
+      remember(location);
+      partial = { kind: 'partial19', mode: 'p19', grid: h.n, frames: partial?.frames || 1,
+        needed: 'more camera evidence' };
+    }
+    function fast(location, tracked = false) {
+      if (!location || typeof location !== 'object') return null;
+      const n = location.dimension;
+      if (!Number.isInteger(n) || n < 25 || n > 145 || (n - 25) % 4 || typeof location.map !== 'function')
+        return null;
+      stats.candidates++;
+      const obs = observe(location);
+      if (!obs) return null;
+      const scores = obs.separation >= 70 ? score(obs) : null;
+      const h = scores ? header(scores, n, false) : null;
+      poses.push({ location, obs, scores, h, tracked });
+      if (!h) return null;
+      recognized(h, location);
+      const decoded = body(scores, h, hard);
+      if (decoded) {
+        stats.tracked = tracked;
+        return makeResult(decoded, h, start);
+      }
+      return null;
+    }
+    // A recent pose avoids re-running finder detection when the camera is steady.
+    // Every frame still has to reconstruct and verify its own header and payload.
+    const previous = options.tracking !== false && state?.pose;
+    if (previous && previous.width === image.width && previous.height === image.height &&
+        previous.locator === (options.locatorKey || options.locate) && Date.now() - previous.time < 1000) {
+      const result = fast(previous.location, true);
+      if (result) return finish(result);
+    }
+    // Keep the complete ordinary hard path before advanced hypotheses. Retain the
+    // observations instead of recursively detecting and sampling every pose twice.
     for (const channel of ['gray', 0, 2]) {
+      if (expired()) return finish();
       const pixels = new Uint8ClampedArray(image.data.length);
       for (let i = 0; i < pixels.length; i += 4) {
-        const v = channel === 'gray' ? .299 * image.data[i] + .587 * image.data[i + 1] + .114 * image.data[
-          i + 2] : image.data[i + channel];
-        pixels[i] = pixels[i + 1] = pixels[i + 2] = v;
-        pixels[i + 3] = 255;
+        const v = channel === 'gray' ? .299 * image.data[i] + .587 * image.data[i + 1] +
+          .114 * image.data[i + 2] : image.data[i + channel];
+        pixels[i] = pixels[i + 1] = pixels[i + 2] = v; pixels[i + 3] = 255;
       }
-      const locations = options.locate(pixels, image.width, image.height);
+      stats.locateCalls++;
+      const locations = measured('locateMs', () => options.locate(pixels, image.width, image.height));
       for (const location of locations.slice(0, 2)) {
-        const n = location.dimension;
-        if (!Number.isInteger(n) || n < 25 || n > 145 || (n - 17) % 4 || typeof location.map !== "function")
-          continue;
-        const shifts = options.refine === false ? [
-          [0, 0]
-        ] : [
-          [0, 0],
-          [.1, 0],
-          [-.1, 0],
-          [0, .1],
-          [0, -.1]
-        ];
-        for (const shift of shifts) {
-          if (performance.now() - searchStart > 2200) return partial || {
-            kind: 'none',
-            mode: 'p19',
-            ms: performance.now() - start
-          };
-          const obs = observations(image, location, shift);
-          if (!obs) continue;
-          const base = classify(obs),
-            h = headerFromScores(base, n, options.soft !== false);
-          if (!h) continue;
-          let body = bodyFromScores(base, h, options);
-          if (body) return makeResult(body, h, start);
-          partial = {
-            kind: 'partial19',
-            mode: 'p19',
-            frames: partial?.frames || 1,
-            grid: n,
-            ms: performance.now() - start,
-            needed: 'more camera evidence'
-          };
-          if (options.session && !fusedThisFrame && shift[0] === 0 && shift[1] === 0) {
-            fusedThisFrame = true;
-            const fused = options.session.add(base, h);
-            partial.frames = fused.count;
-            if (fused.count > 1) {
-              body = bodyFromScores(fused.scores, h, options);
-              if (body) return makeResult(body, h, start, 'burst likelihood fusion', fused.count);
-            }
-          }
-          if (options.spatial !== false)
-            for (const mixing of [.12, .23]) {
-              let scores = classify(obs, mixing, base);
-              scores = classify(obs, mixing, scores);
-              body = bodyFromScores(scores, h, options);
-              if (body) return makeResult(body, h, start, 'joint neighboring-cell model');
-            }
-          // A recognized code need not be detected again in the other RGB planes.
-          if (performance.now() - searchStart > 1800) return partial;
+        if (expired()) return finish();
+        const result = fast(location);
+        if (result) return finish(result);
+      }
+    }
+    if (!advanced && !options.session) return finish();
+    const config = { ...options, deadline };
+    function recover(obs, location, base, h, allowFusion, path) {
+      if (obs.separation < 70 || expired()) return null;
+      base = base || score(obs);
+      h = h || header(base, obs.n, options.soft !== false);
+      if (!h) return null;
+      recognized(h, location);
+      // Accumulate once per capture, before expensive single-image refinements.
+      if (allowFusion && options.session && !fusedThisFrame) {
+        fusedThisFrame = true;
+        const fused = options.session.add(base, h, options.frameId);
+        partial.frames = fused.count;
+        if (fused.count > 1) {
+          const decoded = body(fused.scores, h, config);
+          if (decoded) return makeResult(decoded, h, start, 'burst likelihood fusion', fused.count);
         }
       }
-      if (partial) return partial;
+      const decoded = body(base, h, config);
+      if (decoded) return makeResult(decoded, h, start, path);
+      if (options.spatial !== false) for (const mixing of [.12, .23]) {
+        if (expired()) break;
+        let scores = score(obs, mixing, base);
+        scores = score(obs, mixing, scores);
+        const recovered = body(scores, h, config);
+        if (recovered) return makeResult(recovered, h, start, 'joint neighboring-cell model');
+      }
+      return null;
     }
-    return {
-      kind: 'none',
-      mode: 'p19',
-      ms: performance.now() - start
-    };
+    for (const pose of poses) {
+      if (expired()) return finish();
+      let result = recover(pose.obs, pose.location, pose.scores, pose.h, true);
+      if (result) { stats.tracked = pose.tracked; return finish(result); }
+      if (advanced) {
+        const robust = calibrate(pose.obs, true);
+        result = recover(robust, pose.location, null, null, false, 'robust pilot calibration');
+        if (result) { stats.tracked = pose.tracked; return finish(result); }
+      }
+      if (options.refine !== false) for (const shift of [[.1, 0], [-.1, 0], [0, .1], [0, -.1]]) {
+        if (expired()) return finish();
+        const obs = observe(pose.location, shift);
+        if (!obs) continue;
+        result = recover(obs, pose.location, null, null, false);
+        if (result) { stats.tracked = pose.tracked; return finish(result); }
+      }
+    }
+    return finish();
   }
   return {
     encode,
@@ -1917,7 +2063,7 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
   } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, () => root.Prism19Locator);
 })(globalThis, function(core, envelope, getDefaultLocator) {
   'use strict';
-  const version = '0.1.0',
+  const version = '0.2.0',
     wireVersion = 2,
     maxTextBytes = 1200,
     maxImagePixels = 4194304;
@@ -2046,10 +2192,20 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
   function scanOptions(value) {
     const options = optionsObject(value),
       out = {};
-    for (const key of ['soft', 'equations', 'spatial', 'refine']) {
+    for (const key of ['soft', 'equations', 'spatial', 'refine', 'tracking', 'diagnostics']) {
       if (options[key] !== undefined && typeof options[key] !== 'boolean') throw new TypeError(
         `${key} must be boolean.`);
       if (options[key] !== undefined) out[key] = options[key];
+    }
+    if (options.maxTimeMs !== undefined) {
+      if (!Number.isFinite(options.maxTimeMs) || options.maxTimeMs < 10 || options.maxTimeMs > 10000)
+        throw new RangeError('maxTimeMs must be a number from 10 to 10000.');
+      out.maxTimeMs = options.maxTimeMs;
+    }
+    if (options.frameId !== undefined) {
+      if (!Number.isSafeInteger(options.frameId) || options.frameId < 0)
+        throw new RangeError('frameId must be a nonnegative safe integer.');
+      out.frameId = options.frameId;
     }
     if (options.session !== undefined) {
       if (!options.session || typeof options.session.add !== 'function' || typeof options.session.clear !==
@@ -2088,11 +2244,12 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
     const start = performance.now();
     const configured = scanOptions(options),
       input = imageData(image);
-    if (input.width < 25 || input.height < 25) return {
-      kind: 'none',
-      mode: 'p19',
-      ms: performance.now() - start
-    };
+    if (input.width < 25 || input.height < 25) {
+      const result = { kind: 'none', mode: 'p19', ms: performance.now() - start };
+      if (configured.diagnostics) result.diagnostics = { locateCalls: 0, candidates: 0,
+        observations: 0, tracked: false, locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0 };
+      return result;
+    }
     const locate = options && options.locate !== undefined ? options.locate : getDefaultLocator();
     if (typeof locate !== 'function') throw new TypeError(
       'Load the scanner bundle or provide a locate function.');
@@ -2101,6 +2258,7 @@ return function locate(data,width,height){const matrix=load(4).binarize(data,wid
       if (!Array.isArray(found)) throw new TypeError('Locator must return an array of grid candidates.');
       return found;
     };
+    configured.locatorKey = locate;
     const result = core.scan(input, configured);
     result.ms = performance.now() - start;
     return result;

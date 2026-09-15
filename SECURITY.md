@@ -1,6 +1,6 @@
 # Security and supported versions
 
-Security fixes target the latest 0.1.x release and optical format 2. No earlier standalone package release is maintained.
+Security fixes target the latest 0.2.x release and optical format 2. No earlier standalone package release is maintained.
 
 Report vulnerabilities through the repository's private vulnerability reporting feature where enabled. If no private channel is available, open an issue requesting a private contact without including sensitive payloads or exploit details. A reporting email address is not yet designated.
 
