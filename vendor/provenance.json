@@ -6,12 +6,12 @@
   "upstreamPath": "dist/jsQR.js",
   "sourceNormalization": "UTF-8 text with LF line endings and an attribution header",
   "sourceSHA256": "b12324cda67bd686e2f3cba339b1fbc1a4ec72f40ba597c6fe4b19dde2f28a54",
-  "derivedSHA256": "9abc11c2f1fd7d301c27c863996510528cd556aeffe8404ec5c198f372582a3e",
+  "derivedSHA256": "cc0377c8ed4e8ab17a4ceccedd09bfe51e328bb4225047655cf479ad520cd018",
   "retainedModules": [
     0,
     4,
     11,
     12
   ],
-  "modification": "Geometry-only module extraction and UMD adapter. No algorithm changes."
+  "modification": "Geometry-only extraction and UMD adapter, with optional finder-candidate and mapping-only returns and exports for regrouping and mapping. Default upstream finder selection remains unchanged. Prism-specific grouping and curved-grid fitting are in src/geometry.js."
 }

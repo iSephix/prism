@@ -34,7 +34,7 @@ function getWorker() {
   return worker;
 }
 
-function decode(image, accumulate = false, frameId, maxTimeMs = 2200) {
+function decode(image, accumulate = false, frameId, maxTimeMs = 8000) {
   return new Promise((resolve, reject) => {
     const id = ++request;
     try {
@@ -42,7 +42,7 @@ function decode(image, accumulate = false, frameId, maxTimeMs = 2200) {
       pending.set(id, {
         resolve,
         reject,
-        timeout: setTimeout(() => cancelWorker('This image took too long. Try another frame.'), 8000)
+        timeout: setTimeout(() => cancelWorker('This image took too long. Try another frame.'), Math.max(8000, maxTimeMs + 2000))
       });
       w.postMessage({
         id,
@@ -328,6 +328,7 @@ $('start').onclick = async () => {
       if (frameTime === lastTime) { schedule(); return; }
       lastTime = frameTime;
       const deep = ++captured % 6 === 0;
+      const budget = deep || captured % 3 === 1 ? 6000 : 2200;
       const scale = Math.min(1, (deep ? 1800 : 1120) / Math.max(v.videoWidth, v.videoHeight));
       const width = Math.round(v.videoWidth * scale), height = Math.round(v.videoHeight * scale);
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
@@ -335,7 +336,7 @@ $('start').onclick = async () => {
       const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
         snapshot = new Uint8ClampedArray(input.data);
       try {
-        const result = await decode(input, true, captured, 2200);
+        const result = await decode(input, true, captured, budget);
         if (token !== cameraToken) return;
         if (display(result)) {
           $('photo').width = canvas.width;

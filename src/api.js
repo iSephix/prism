@@ -2,12 +2,11 @@
 // Copyright 2026 Prism 19 contributors.
 (function(root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./codec.js'), require('./envelope.js'), require('./payload.js'), () => require(
-      '../vendor/jsqr-locator.js'));
-  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Locator);
+    module.exports = factory(require('./codec.js'), require('./envelope.js'), require('./payload.js'), () => require('./geometry.js'));
+  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Geometry || root.Prism19Locator);
 })(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.3.1',
+  const version = '0.3.2',
     wireVersion = 3,
     supportedWireVersions = Object.freeze([2, 3]),
     maxTextBytes = 8554,
@@ -247,6 +246,8 @@
       return found;
     };
     configured.locatorKey = locate;
+    if (options?.locate === undefined && configured.refine !== false && typeof locate.search === 'function')
+      configured.searchGeometry = locate.search;
     const result = withPayload(core.scan(input, configured));
     result.ms = performance.now() - start;
     return result;

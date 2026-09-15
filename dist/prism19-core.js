@@ -1,4 +1,4 @@
-/*! Prism 19 0.3.1 | Apache-2.0 | See LICENSE and NOTICE. */
+/*! Prism 19 0.3.2 | Apache-2.0 | See LICENSE and NOTICE. */
 (function(){
 const module=undefined,exports=undefined,define=undefined;
 
@@ -696,7 +696,7 @@ const module=undefined,exports=undefined,define=undefined;
   function observations(image, location, shift = [0, 0]) {
     const n = location.dimension,
       l = layout(n),
-      norm = photometry(image, location.map, n);
+      norm = photometry(image, location.photometryMap || location.map, n);
     if (!norm) return null;
     const data = new Float32Array(n * n * FEATURES), rgb = [0, 0, 0];
     for (const cell of [...l.pilots, ...l.slots]) {
@@ -1243,6 +1243,17 @@ const module=undefined,exports=undefined,define=undefined;
       }
       const recovered = recoverPoses(poses.slice(firstPose));
       if (recovered) return finish(recovered);
+      if (channel === 'gray' && typeof options.searchGeometry === 'function' && !expired()) {
+        const iterator = options.searchGeometry(image, deadline);
+        while (!expired()) {
+          const candidate = measured('locateMs', () => iterator.next());
+          if (candidate.done) break;
+          const first = poses.length, result = fast(candidate.value);
+          if (result) return finish(result);
+          const recovered = recoverPoses(poses.slice(first));
+          if (recovered) return finish(recovered);
+        }
+      }
     }
     function recover(obs, location, base, h, allowFusion, path) {
       if (obs.separation < 70 || expired()) return null;
@@ -1556,12 +1567,11 @@ const module=undefined,exports=undefined,define=undefined;
 // Copyright 2026 Prism 19 contributors.
 (function(root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./codec.js'), require('./envelope.js'), require('./payload.js'), () => require(
-      '../vendor/jsqr-locator.js'));
-  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Locator);
+    module.exports = factory(require('./codec.js'), require('./envelope.js'), require('./payload.js'), () => require('./geometry.js'));
+  } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Geometry || root.Prism19Locator);
 })(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.3.1',
+  const version = '0.3.2',
     wireVersion = 3,
     supportedWireVersions = Object.freeze([2, 3]),
     maxTextBytes = 8554,
@@ -1801,6 +1811,8 @@ const module=undefined,exports=undefined,define=undefined;
       return found;
     };
     configured.locatorKey = locate;
+    if (options?.locate === undefined && configured.refine !== false && typeof locate.search === 'function')
+      configured.searchGeometry = locate.search;
     const result = withPayload(core.scan(input, configured));
     result.ms = performance.now() - start;
     return result;

@@ -25,7 +25,7 @@ assert.equal(sha(read('vendor/jsqr-upstream.js')), provenance.sourceSHA256);
 const sources = ['src/crc32.js', 'src/gf19.js', 'src/alphabet19.js', 'src/codec.js', 'src/envelope.js', 'src/payload.js'];
 for (const [name, files] of [
     ['prism19-core.js', [...sources, 'src/api.js']],
-    ['prism19.js', [...sources, 'vendor/jsqr-locator.js', 'src/api.js']]
+    ['prism19.js', [...sources, 'vendor/jsqr-locator.js', 'src/geometry.js', 'src/api.js']]
   ]) {
   const expected =
     `/*! Prism 19 ${pkg.version} | Apache-2.0 | See LICENSE and NOTICE. */\n(function(){\nconst module=undefined,exports=undefined,define=undefined;\n` +

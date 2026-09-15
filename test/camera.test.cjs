@@ -74,7 +74,7 @@ test('camera schedules fresh frames after completion and gives every resolution 
     assert.equal(h.callbacks.size, 0, 'No queued frame while the worker is busy');
     const request = worker.messages.at(-1);
     assert.equal(request.options.frameId, frame);
-    assert.equal(request.options.maxTimeMs, 2200);
+    assert.equal(request.options.maxTimeMs, frame === 6 || frame % 3 === 1 ? 6000 : 2200);
     assert.equal(request.image.width, frame === 6 ? 1800 : 1120);
     worker.reply({ kind: 'none' }); await pending;
     const count = worker.messages.length;

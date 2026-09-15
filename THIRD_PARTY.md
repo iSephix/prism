@@ -9,7 +9,7 @@ The package has **no installed npm dependencies**. Its default optical locator c
 
 The pinned upstream revision is [`8e6a036beafa7053dd44b1b76ac578d22b1b3311`](https://github.com/cozmo/jsQR/commit/8e6a036beafa7053dd44b1b76ac578d22b1b3311), file `dist/jsQR.js`. The captured source uses LF line endings. Exact SHA-256 values for the captured source and generated locator are in [vendor/provenance.json](vendor/provenance.json).
 
-`node scripts/extract-locator.cjs` retains only modules 0, 4, 11 and 12 and wraps them as `locate(rgba, width, height)`. It removes the QR payload decoder, QR Reed–Solomon implementation and character tables from the runtime locator. It does not rewrite the retained algorithms. Generated files carry modification notices. The [upstream license](vendor/LICENSE-jsQR.txt) is included alongside the project's [LICENSE](LICENSE) and [NOTICE](NOTICE).
+`node scripts/extract-locator.cjs` retains only modules 0, 4, 11 and 12 and wraps them as `locate(rgba, width, height)`. It removes the QR payload decoder, QR Reed–Solomon implementation and character tables from the runtime locator. The default upstream finder-selection path is retained. An optional return exposes candidate markers, and additional exports expose regrouping and mapping. Prism-specific candidate grouping and smooth-grid fitting live in `src/geometry.js`. Generated files carry modification notices. The [upstream license](vendor/LICENSE-jsQR.txt) is included alongside the project's [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 The prior web experiment also contained the MIT-licensed `qrcode-generator` for QR/Prism 4/Prism 8 comparisons. That component and those legacy formats are not part of this standalone release. There is no JAB or HiQ code in this distribution.
 

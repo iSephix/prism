@@ -323,7 +323,7 @@
   function observations(image, location, shift = [0, 0]) {
     const n = location.dimension,
       l = layout(n),
-      norm = photometry(image, location.map, n);
+      norm = photometry(image, location.photometryMap || location.map, n);
     if (!norm) return null;
     const data = new Float32Array(n * n * FEATURES), rgb = [0, 0, 0];
     for (const cell of [...l.pilots, ...l.slots]) {
@@ -870,6 +870,17 @@
       }
       const recovered = recoverPoses(poses.slice(firstPose));
       if (recovered) return finish(recovered);
+      if (channel === 'gray' && typeof options.searchGeometry === 'function' && !expired()) {
+        const iterator = options.searchGeometry(image, deadline);
+        while (!expired()) {
+          const candidate = measured('locateMs', () => iterator.next());
+          if (candidate.done) break;
+          const first = poses.length, result = fast(candidate.value);
+          if (result) return finish(result);
+          const recovered = recoverPoses(poses.slice(first));
+          if (recovered) return finish(recovered);
+        }
+      }
     }
     function recover(obs, location, base, h, allowFusion, path) {
       if (obs.separation < 70 || expired()) return null;

@@ -10,7 +10,7 @@ fs.mkdirSync(path.join(root, 'dist'), {
 });
 for (const [name, files] of [
     ['prism19-core.js', [...source, 'src/api.js']],
-    ['prism19.js', [...source, 'vendor/jsqr-locator.js', 'src/api.js']]
+    ['prism19.js', [...source, 'vendor/jsqr-locator.js', 'src/geometry.js', 'src/api.js']]
   ]) {
   const text =
     `/*! Prism 19 ${pkg.version} | Apache-2.0 | See LICENSE and NOTICE. */\n(function(){\nconst module=undefined,exports=undefined,define=undefined;\n` +

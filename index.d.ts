@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-export const version: '0.3.1';
+export const version: '0.3.2';
 export const wireVersion: 3;
 export const supportedWireVersions: readonly [2, 3];
 export const maxTextBytes: 8554;

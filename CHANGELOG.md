@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.2 — photographed prints and multiple codes
+
+- Group finder markers locally so a sheet of stickers does not create a fictitious code from unrelated corners.
+- Rank candidate grids using the known pilot shapes. Estimate cell positions from connected ink components, join their relative grid coordinates by confidence, and fit a smooth surface for curved paper.
+- Infer the grid dimension from observed cell extents when finder widths misestimate it. Keep header checks, Reed–Solomon recovery and final payload CRC as the acceptance gates.
+- Try both fitted and original finder photometry; this preserves recovery after camera downsampling.
+- Give the first and periodic live frames up to 6000 ms for difficult recovery, with occasional higher-resolution capture. Still-image searches allow 8000 ms.
+- Verified the three supplied physical photographs and their 1120-pixel camera equivalents against exact recovered body hashes. Add public synthetic sheet/curved-print regressions and an optional private PNG corpus runner.
+- Encoding, symbol IDs and wire formats are unchanged.
+
 ## 0.3.1 — restore camera recovery
 
 - Give every live frame the full 2200 ms recovery allowance; clean codes still return immediately. Keep 1120-pixel captures and occasional 1800-pixel attempts.

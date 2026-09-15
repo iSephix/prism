@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Derived from jsQR by Cosmo Wolfe and contributors. See LICENSE-jsQR.txt.
-// Modified 2026-09-14: extract only BitMatrix, binarizer, extractor and locator;
-// add a UMD locate(data,width,height) adapter. Algorithms are unchanged.
+// Modified 2026-09-15: extract geometry modules; expose finder candidates,
+// regrouping and mapping for Prism's multi-code and curved-print recovery.
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.Prism19Locator=factory();})(globalThis,function(){
 'use strict';
 const modules={0: function(module,exports,__webpack_require__){
@@ -232,7 +232,7 @@ function times(a, b) {
         a33: a.a13 * b.a31 + a.a23 * b.a32 + a.a33 * b.a33,
     };
 }
-function extract(image, location) {
+function extract(image, location, mappingOnly) {
     var qToS = quadrilateralToSquare({ x: 3.5, y: 3.5 }, { x: location.dimension - 3.5, y: 3.5 }, { x: location.dimension - 6.5, y: location.dimension - 6.5 }, { x: 3.5, y: location.dimension - 3.5 });
     var sToQ = squareToQuadrilateral(location.topLeft, location.topRight, location.alignmentPattern, location.bottomLeft);
     var transform = times(sToQ, qToS);
@@ -244,6 +244,7 @@ function extract(image, location) {
             y: (transform.a12 * x + transform.a22 * y + transform.a32) / denominator,
         };
     };
+    if (mappingOnly) return {mappingFunction};
     for (var y = 0; y < location.dimension; y++) {
         for (var x = 0; x < location.dimension; x++) {
             var xValue = x + 0.5;
@@ -465,7 +466,7 @@ function recenterLocation(matrix, p) {
     var y = (topY + bottomY) / 2;
     return { x: x, y: y };
 }
-function locate(matrix) {
+function locate(matrix, options) {
     var finderPatternQuads = [];
     var activeFinderPatternQuads = [];
     var alignmentPatternQuads = [];
@@ -552,7 +553,7 @@ function locate(matrix) {
     }
     finderPatternQuads.push.apply(finderPatternQuads, activeFinderPatternQuads.filter(function (q) { return q.bottom.y - q.top.y >= 2; }));
     alignmentPatternQuads.push.apply(alignmentPatternQuads, activeAlignmentPatternQuads);
-    var finderPatternGroups = finderPatternQuads
+    var finderPatterns = finderPatternQuads
         .filter(function (q) { return q.bottom.y - q.top.y >= 2; }) // All quads must be at least 2px tall since the center square is larger than a block
         .map(function (q) {
         var x = (q.top.startX + q.top.endX + q.bottom.startX + q.bottom.endX) / 4;
@@ -567,7 +568,9 @@ function locate(matrix) {
     })
         .filter(function (q) { return !!q; }) // Filter out any rejected quads from above
         .sort(function (a, b) { return a.score - b.score; })
-        // Now take the top finder pattern options and try to find 2 other options with a similar size.
+        ;
+    if (options && options.patternsOnly) return {finderPatterns,alignmentPatternQuads,matrix};
+    var finderPatternGroups = finderPatterns
         .map(function (point, i, finderPatterns) {
         if (i > MAX_FINDERPATTERNS_TO_SEARCH) {
             return null;
@@ -623,6 +626,7 @@ function locate(matrix) {
     return result;
 }
 exports.locate = locate;
+exports.group = (matrix,quads,a,b,c)=>{const p=reorderFinderPatterns(a,b,c);const r=findAlignmentPattern(matrix,quads,p.topRight,p.topLeft,p.bottomLeft);return r&&{...p,...r};};
 function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, bottomLeft) {
     var _a;
     // Now that we've found the three finder patterns we can determine the blockSize and the size of the QR code.
@@ -669,5 +673,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
 }},cache={};
 function load(id){if(!cache[id]){const module={exports:{}};cache[id]=module;modules[id](module,module.exports,load);}return cache[id].exports;}
-return function locate(data,width,height){const matrix=load(4).binarize(data,width,height,false).binarized;return (load(12).locate(matrix)||[]).slice(0,2).map(location=>({dimension:location.dimension,map:load(11).extract(matrix,location).mappingFunction}));};
+function locate(data,width,height){const matrix=load(4).binarize(data,width,height,false).binarized;return (load(12).locate(matrix)||[]).slice(0,2).map(location=>({dimension:location.dimension,map:load(11).extract(matrix,location).mappingFunction}));};
+locate.patterns=(data,w,h)=>load(12).locate(load(4).binarize(data,w,h,false).binarized,{patternsOnly:true});
+locate.group=(a,p,q,r)=>load(12).group(a.matrix,a.alignmentPatternQuads,p,q,r);
+locate.mapping=location=>load(11).extract(null,location,true).mappingFunction;
+return locate;
 });
