@@ -16,7 +16,7 @@ npm run check
 npm pack
 ```
 
-The resulting `prism19-0.3.2.tgz` is installable directly without a registry publication. For example, install that file into another project with `npm install /absolute/path/to/prism19-0.3.2.tgz`, then import `prism19`. Do not regenerate `spec/vectors.json` during an ordinary release.
+The resulting `prism19-0.3.3.tgz` is installable directly without a registry publication. For example, install that file into another project with `npm install /absolute/path/to/prism19-0.3.3.tgz`, then import `prism19`. Do not regenerate `spec/vectors.json` during an ordinary release.
 
 For decoder changes, also run the [paired benchmark](BENCHMARKS.md) against the published baseline. Keep the per-case report and source hashes with the release's validation evidence. If TypeScript is available separately, run `tsc --project test/tsconfig.json`; the runtime package does not depend on the compiler.
 
@@ -25,8 +25,8 @@ For decoder changes, also run the [paired benchmark](BENCHMARKS.md) against the 
 After the release checks pass on the commit to publish, create and push its tag from a clone of the repository:
 
 ```sh
-git tag -a v0.3.2 -m "Prism 19 reference implementation 0.3.2"
-git push origin v0.3.2
+git tag -a v0.3.3 -m "Prism 19 reference implementation 0.3.3"
+git push origin v0.3.3
 ```
 
 Repository description: “Open 19-symbol optical format, GF(19) error recovery, camera scanner, and independent conformance vectors.” Suggested topics: `barcode`, `optical-code`, `reed-solomon`, `computer-vision`, `open-standard`.

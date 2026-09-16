@@ -5,3 +5,4 @@
 @media print{body{background:white}main{padding:0}.workspace>section{padding:0}#code{width:var(--print-size,60mm)!important;max-width:none;margin:10mm auto;break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 
 #payload-file{max-width:100%;font:inherit}#byte-count{float:none}.payload-image{display:block;max-width:100%;max-height:320px;object-fit:contain;margin:18px auto}#payload-audio{width:100%;margin:14px 0}.action-link{display:inline-flex;align-items:center;padding:10px 16px;background:#e9eff8;border-radius:5px;text-decoration:none;font-weight:600;font-size:14px}#payload-hint:empty{display:none}
+.scan-report{margin:18px 0;padding:14px;background:#f3f6fb;border-radius:6px}.scan-report>span{display:block;margin-top:8px}.scan-report details{margin-bottom:0}#camera-choice{margin:14px 0}

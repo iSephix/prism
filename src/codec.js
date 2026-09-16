@@ -779,11 +779,13 @@
       'An image locator is required; use the public scan() API or supply options.locate.');
     const start = performance.now(), deadline = start + (options.maxTimeMs ?? 2200);
     const stats = { locateCalls: 0, candidates: 0, observations: 0, tracked: false,
-      locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0 };
+      locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0,
+      unusableObservations: 0, bestSeparation: 0, headerMatches: 0, geometryCandidates: 0 };
     const hard = { soft: false, equations: false }, advanced = options.soft !== false ||
       options.equations !== false || options.spatial !== false || options.refine !== false;
     const config = { ...options, deadline };
     const state = sessions.get(options.session), poses = [];
+    const sampledImages = new Map();
     let partial = null, fusedThisFrame = false;
     const expired = () => performance.now() >= deadline;
     function measured(key, fn) {
@@ -803,6 +805,14 @@
     }
     function observe(location, shift = [0, 0]) {
       stats.observations++;
+      if (location.sampleWidth && location.sampleHeight) {
+        const key = `${location.sampleWidth},${location.sampleHeight}`;
+        if (!sampledImages.has(key)) sampledImages.set(key, resize(image, location.sampleWidth, location.sampleHeight));
+        const sampled = sampledImages.get(key), sx = sampled.width / image.width, sy = sampled.height / image.height;
+        const scaled = map => (x, y) => { const p = map(x, y); return { x: p.x * sx, y: p.y * sy }; };
+        return measured('observeMs', () => observations(sampled, { ...location, map: scaled(location.map),
+          photometryMap: location.photometryMap && scaled(location.photometryMap) }, shift));
+      }
       return measured('observeMs', () => observations(image, location, shift));
     }
     function score(obs, mixing = 0, prior = null) {
@@ -815,6 +825,7 @@
       return measured('decodeMs', () => bodyFromScores(scores, h, config));
     }
     function recognized(h, location) {
+      stats.headerMatches++;
       remember(location);
       partial = { kind: 'partial19', mode: 'p19', grid: h.n, frames: partial?.frames || 1,
         needed: 'more camera evidence' };
@@ -826,7 +837,8 @@
         return null;
       stats.candidates++;
       const obs = observe(location);
-      if (!obs) return null;
+      if (!obs) { stats.unusableObservations++; return null; }
+      stats.bestSeparation = Math.max(stats.bestSeparation, obs.separation);
       const scores = obs.separation >= 70 ? score(obs) : null;
       const h = scores ? header(scores, n, false) : null;
       poses.push({ location, obs, scores, h, tracked });
@@ -871,10 +883,11 @@
       const recovered = recoverPoses(poses.slice(firstPose));
       if (recovered) return finish(recovered);
       if (channel === 'gray' && typeof options.searchGeometry === 'function' && !expired()) {
-        const iterator = options.searchGeometry(image, deadline);
+        const iterator = options.searchGeometry(image, deadline, poses.length === 0);
         while (!expired()) {
           const candidate = measured('locateMs', () => iterator.next());
           if (candidate.done) break;
+          stats.geometryCandidates++;
           const first = poses.length, result = fast(candidate.value);
           if (result) return finish(result);
           const recovered = recoverPoses(poses.slice(first));
@@ -932,7 +945,24 @@
     }
     return finish();
   }
+  // Box-average integer pixel areas for bounded scanner scale fallbacks.
+  function resize(image, width, height) {
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const x0 = Math.floor(x * image.width / width), x1 = Math.max(x0 + 1, Math.floor((x + 1) * image.width / width));
+      const y0 = Math.floor(y * image.height / height), y1 = Math.max(y0 + 1, Math.floor((y + 1) * image.height / height));
+      const out = (y * width + x) * 4, count = (x1 - x0) * (y1 - y0);
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let iy = y0; iy < y1; iy++) for (let ix = x0; ix < x1; ix++) sum += image.data[(iy * image.width + ix) * 4 + c];
+        data[out + c] = sum / count;
+      }
+      data[out + 3] = 255;
+    }
+    return { width, height, data };
+  }
   return {
+    resize,
     encode,
     raster,
     svg,

@@ -7,12 +7,15 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 function host(frameCallbacks = true, hardware = true) {
   const elements = new Map(), callbacks = new Map(), timers = new Map(), workers = [];
   let serial = 0, prints = 0;
+  const downloads = [], cameraRequests = [];
   function element() {
     const attributes = new Map(), styles = new Map();
     const e = { hidden: false, disabled: false, checked: true, value: '', textContent: '',
       style: { setProperty: (k, v) => styles.set(k, v), getPropertyValue: k => styles.get(k) },
       setAttribute: (k, v) => attributes.set(k, v), getAttribute: k => attributes.get(k),
-      replaceChildren() {}, play: async () => {}, pause() {}, load() {}, removeAttribute: k => attributes.delete(k),
+      replaceChildren() {}, append() {}, click() {}, remove() {},
+      toDataURL: () => 'data:image/png;base64,AA==',
+      play: async () => {}, pause() {}, load() {}, removeAttribute: k => attributes.delete(k),
       getContext: () => ({ drawImage() {}, putImageData() {},
         getImageData: () => ({ width: e.width, height: e.height,
           data: new Uint8ClampedArray(e.width * e.height * 4) }) }) };
@@ -43,11 +46,15 @@ function host(frameCallbacks = true, hardware = true) {
       this.onmessage({ data: { id: request.id, result } }); }
   }
   const context = vm.createContext({ Prism19: require('..'), Alphabet19: require('../src/alphabet19.js'),
-    TextEncoder, Uint8Array, Uint8ClampedArray, DataView, Blob, URL, Worker, isSecureContext: true,
+    PrismScanLog: require('../examples/diagnostics.js'),
+    TextEncoder, Uint8Array, Uint8ClampedArray, DataView, Blob,
+    URL: { createObjectURL: blob => { downloads.push(blob); return 'blob:local'; }, revokeObjectURL() {} }, Worker, isSecureContext: true,
     ImageData: class { constructor(data, width, height) { Object.assign(this, { data, width, height }); } },
-    navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [track],
-      getVideoTracks: () => [track] }) } },
-    document: { getElementById: $, createElement: element, addEventListener() {} },
+    navigator: { userAgent: 'Test camera', mediaDevices: { getUserMedia: async options => {
+      cameraRequests.push(options); track.readyState = 'live'; return { getTracks: () => [track], getVideoTracks: () => [track] }; },
+      enumerateDevices: async () => [{ kind: 'videoinput', deviceId: 'rear-wide', label: 'Wide camera' },
+        { kind: 'videoinput', deviceId: 'rear-close', label: 'Close camera' }] } },
+    document: { getElementById: $, createElement: element, body: { append() {} }, addEventListener() {} },
     window: { addEventListener() {}, print: () => prints++ },
     setTimeout: (fn, ms) => { const id = ++serial; timers.set(id, { fn, ms }); return id; },
     clearTimeout: id => timers.delete(id) });
@@ -62,10 +69,10 @@ function host(frameCallbacks = true, hardware = true) {
     const [id, timer] = [...timers].find(([, t]) => t.ms === 40);
     timers.delete(id); return timer.fn();
   }
-  return { $, callbacks, timers, workers, frame, track, constraints, prints: () => prints };
+  return { $, callbacks, timers, workers, frame, track, constraints, downloads, cameraRequests, prints: () => prints };
 }
 
-test('camera schedules fresh frames after completion and gives every resolution a full recovery budget', async () => {
+test('camera cycles three resolutions after completion without queuing or fusing stale frames', async () => {
   const h = host();
   await h.$('start').onclick();
   const worker = h.workers[0];
@@ -74,8 +81,9 @@ test('camera schedules fresh frames after completion and gives every resolution 
     assert.equal(h.callbacks.size, 0, 'No queued frame while the worker is busy');
     const request = worker.messages.at(-1);
     assert.equal(request.options.frameId, frame);
-    assert.equal(request.options.maxTimeMs, frame === 6 || frame % 3 === 1 ? 6000 : 2200);
-    assert.equal(request.image.width, frame === 6 ? 1800 : 1120);
+    assert.equal(request.options.maxTimeMs, frame % 3 === 1 ? 1800 : 6000);
+    assert.equal(request.image.width, [800, 1120, 1800][(frame - 1) % 3]);
+    assert.equal(request.options.diagnostics, true);
     worker.reply({ kind: 'none' }); await pending;
     const count = worker.messages.length;
     await h.frame(frame);
@@ -154,12 +162,55 @@ test('older camera API fallback skips stale frames and the watchdog releases a s
   const count = worker.messages.length; await h.frame(1);
   assert.equal(worker.messages.length, count);
   pending = h.frame(2);
-  const [id, timeout] = [...h.timers].find(([, t]) => t.ms === 8000);
+  const [id, timeout] = [...h.timers].find(([, t]) => t.ms === 10000);
   h.timers.delete(id); timeout.fn(); await pending;
   assert.equal(worker.terminated, true);
-  assert.equal(h.track.readyState, 'ended');
+  assert.equal(h.track.readyState, 'live');
   assert.match(h.$('scan-status').textContent, /too long/);
+  pending = h.frame(3);
+  const replacement = h.workers.at(-1);
+  assert.notEqual(replacement, worker);
+  replacement.reply({ kind: 'prism19', text: 'Recovered after timeout', ms: 30 }); await pending;
+  assert.equal(h.$('result').textContent, 'Recovered after timeout');
+  assert.equal(h.track.readyState, 'ended');
   assert.equal(h.timers.size, 0);
+});
+
+test('worker progress keeps the pending frame alive and reports contain replayable captures but no decoded text', async () => {
+  const h = host(); await h.$('start').onclick();
+  const pending = h.frame(1), worker = h.workers[0], id = worker.messages.at(-1).id;
+  worker.onmessage({ data: { id, progress: 'decoding', version: require('..').version } });
+  assert.equal(h.callbacks.size, 0);
+  worker.reply({ kind: 'encrypted', envelope: [12, 45, 99], text: 'must never be logged', ms: 42 });
+  await pending;
+  h.$('decode-password').value = 'must never be logged either'; h.$('report-note').value = 'Bright room';
+  h.$('save-report').onclick();
+  const text = await h.downloads.at(-1).text(), report = JSON.parse(text);
+  assert.equal(report.schema, 'prism-scan-report');
+  assert.equal(report.note, 'Bright room');
+  assert.equal(report.frames.length, 1);
+  assert.equal(report.frames[0].metadata.source, 'camera');
+  assert.ok(report.events.some(e => e.type === 'worker-progress'));
+  assert.ok(report.events.some(e => e.type === 'result' && e.kind === 'encrypted'));
+  assert.ok(!text.includes('must never') && !text.includes('envelope'));
+  h.$('report-images').checked = false; h.$('report-images').onchange();
+  h.$('save-report').onclick();
+  assert.equal(JSON.parse(await h.downloads.at(-1).text()).frames.length, 0);
+});
+
+test('freeze captures before stopping the camera, cancels the busy attempt and uses a longer still budget', async () => {
+  const h = host(); h.$('camera-select').value = 'rear-close'; await h.$('start').onclick();
+  assert.equal(h.cameraRequests[0].video.deviceId.exact, 'rear-close');
+  const pending = h.frame(1), old = h.workers[0];
+  h.$('freeze').onclick(); await pending;
+  const next = h.workers.at(-1), request = next.messages.at(-1);
+  assert.notEqual(next, old); assert.equal(old.terminated, true);
+  assert.equal(h.track.readyState, 'ended'); assert.equal(request.options.maxTimeMs, 10000);
+  assert.equal(request.image.width, 1800); assert.equal(request.accumulate, false);
+  next.reply({ kind: 'prism19', text: 'Frozen print', ms: 100 });
+  await Promise.resolve(); await Promise.resolve();
+  assert.equal(h.$('result').textContent, 'Frozen print');
+  assert.equal(h.$('photo').hidden, false);
 });
 
 test('the demo recovers a calculation and waits for the Calculate action', async () => {

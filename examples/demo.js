@@ -12,6 +12,25 @@ let code = null,
   message = '', selectedPayload = null, recoveredPayload = null, payloadURL = null, fileRequest = 0;
 const pending = new Map(),
   options = () => Object.fromEntries(['soft', 'equations', 'spatial', 'refine'].map(k => [k, $(k).checked]));
+const scanLog = PrismScanLog.create(P.version, {
+  userAgent: navigator.userAgent, language: navigator.language,
+  secureContext: isSecureContext, frameCallbacks: typeof $('video').requestVideoFrameCallback === 'function'
+});
+let scanSource = 'image';
+function reportCount() {
+  const n = scanLog.counts();
+  $('report-count').textContent = `${n.attempts} attempts · ${n.frames} saved frames`;
+}
+function cameraInfo(track = stream?.getVideoTracks()[0]) {
+  let settings = {}; const out = {};
+  try { settings = track?.getSettings?.() || {}; } catch { /* Reporting must not interrupt capture. */ }
+  for (const key of ['width', 'height', 'frameRate', 'facingMode', 'zoom', 'focusMode', 'focusDistance', 'exposureMode', 'torch'])
+    if (settings[key] !== undefined) out[key] = settings[key];
+  const video = $('video');
+  return { ...out, label: track?.label, readyState: track?.readyState, muted: track?.muted,
+    videoWidth: video.videoWidth, videoHeight: video.videoHeight,
+    videoReadyState: video.readyState, mediaTime: video.currentTime };
+}
 
 function getWorker() {
   if (worker) return worker;
@@ -21,11 +40,18 @@ function getWorker() {
   }) => {
     const p = pending.get(data.id);
     if (!p) return;
+    if (data.progress) {
+      scanLog.event('worker-progress', { id: data.id, stage: data.progress, version: data.version });
+      return;
+    }
     pending.delete(data.id);
     clearTimeout(p.timeout);
+    if (data.error) scanLog.event('worker-error', { id: data.id, message: data.error });
+    else scanLog.result(data.id, data.result, data.diagnostics);
     data.error ? p.reject(Error(data.error)) : p.resolve(data.result);
   };
   worker.onerror = () => {
+    scanLog.event('worker-crash');
     for (const p of pending.values()) { clearTimeout(p.timeout); p.reject(Error('Decoder worker failed. Please retry.')); }
     pending.clear();
     worker.terminate();
@@ -38,16 +64,23 @@ function decode(image, accumulate = false, frameId, maxTimeMs = 8000) {
   return new Promise((resolve, reject) => {
     const id = ++request;
     try {
+      const settings = { ...options(), frameId, maxTimeMs, diagnostics: true };
+      scanLog.capture(id, image, { source: scanSource, options: settings, burst: $('burst').checked,
+        camera: accumulate ? cameraInfo() : undefined }, $('report-images').checked);
+      reportCount();
       const w = getWorker();
       pending.set(id, {
         resolve,
         reject,
-        timeout: setTimeout(() => cancelWorker('This image took too long. Try another frame.'), Math.max(8000, maxTimeMs + 2000))
+        timeout: setTimeout(() => {
+          scanLog.event('worker-timeout', { id, budgetMs: maxTimeMs });
+          cancelWorker('This frame took too long. Retrying with a fresh frame.');
+        }, Math.max(10000, maxTimeMs + 4000))
       });
       w.postMessage({
         id,
         image,
-        options: { ...options(), frameId, maxTimeMs },
+        options: settings,
         accumulate,
         burst: $('burst').checked
       }, [image.data.buffer]);
@@ -166,6 +199,7 @@ function display(result) {
 }
 
 function cancelWorker(reason = 'Scan cancelled.') {
+  if (pending.size) scanLog.event('worker-cancelled', { ids: [...pending.keys()], reason });
   worker?.terminate();
   worker = null;
   for (const p of pending.values()) { clearTimeout(p.timeout); p.reject(Error(reason)); }
@@ -187,11 +221,13 @@ function stop() {
   $('video').hidden = true;
   $('start').disabled = false;
   $('stop').hidden = true;
+  $('freeze').hidden = true;
   $('camera-idle').hidden = !$('photo').hidden;
 }
-async function still(image) {
+async function still(image, source = 'image') {
   stop();
   clear();
+  scanSource = source;
   const token = cameraToken;
   $('photo').width = image.width;
   $('photo').height = image.height;
@@ -200,14 +236,14 @@ async function still(image) {
   $('camera-idle').hidden = true;
   $('scan-status').textContent = 'Reading image…';
   try {
-    const result = await decode(image);
+    const result = await decode(image, false, undefined, 10000);
     if (token === cameraToken) display(result);
   } catch (error) {
     if (token === cameraToken) $('scan-status').textContent = error.message;
   }
 }
 $('decode-generated').onclick = () => {
-  if (code) still(P.toRGBA(code));
+  if (code) still(P.toRGBA(code), 'generated');
 };
 $('upload').onclick = () => $('file').click();
 $('file').onchange = async e => {
@@ -248,6 +284,7 @@ $('start').onclick = async () => {
   stop();
   clear();
   const token = cameraToken;
+  scanSource = 'camera';
   $('photo').hidden = true;
   $('camera-idle').hidden = false;
   $('start').disabled = true;
@@ -257,6 +294,7 @@ $('start').onclick = async () => {
       'Open this demo over HTTPS (or localhost), or choose an image.');
     const acquired = await navigator.mediaDevices.getUserMedia({
       video: {
+        ...($('camera-select').value ? { deviceId: { exact: $('camera-select').value } } : {}),
         facingMode: {
           ideal: 'environment'
         },
@@ -281,13 +319,30 @@ $('start').onclick = async () => {
     $('video').hidden = false;
     $('camera-idle').hidden = true;
     $('stop').hidden = false;
+    $('freeze').hidden = false;
     $('scan-status').textContent = 'Keep the complete code in view.';
     getWorker().postMessage({
       reset: true
     });
     const track = stream.getVideoTracks()[0];
+    scanLog.event('camera-open', cameraInfo(track));
+    // Labels become available after permission. Expose each lens without guessing
+    // from translated device names which lens will focus best on this print.
+    try {
+      const devices = (await navigator.mediaDevices.enumerateDevices?.() || []).filter(d => d.kind === 'videoinput');
+      if (token !== cameraToken) return;
+      const selected = $('camera-select').value;
+      $('camera-select').replaceChildren();
+      const automatic = document.createElement('option'); automatic.value = ''; automatic.textContent = 'Automatic rear camera';
+      $('camera-select').append(automatic);
+      devices.forEach((device, i) => { const option = document.createElement('option');
+        option.value = device.deviceId; option.textContent = device.label || `Camera ${i + 1}`; $('camera-select').append(option); });
+      $('camera-select').value = selected;
+      $('camera-choice').hidden = devices.length < 2;
+    } catch { /* Camera selection is optional. */ }
     let caps = {};
     try { caps = track.getCapabilities?.() || {}; } catch { /* Optional hardware controls. */ }
+    scanLog.event('camera-capabilities', { focusMode: caps.focusMode, zoom: caps.zoom, torch: caps.torch });
     $('torch').hidden = !(caps.torch === true || Array.isArray(caps.torch) && caps.torch.includes(true));
     const zoom = caps.zoom;
     $('zoom-control').hidden = !(zoom && Number.isFinite(zoom.min) && Number.isFinite(zoom.max) && zoom.max > zoom.min);
@@ -304,7 +359,7 @@ $('start').onclick = async () => {
     if (token !== cameraToken) return;
     const canvas = document.createElement('canvas'),
       ctx = canvas.getContext('2d', { willReadFrequently: true });
-    let lastTime = -1, captured = 0;
+    let lastTime = -1, captured = 0, failures = 0;
     const schedule = () => {
       if (token !== cameraToken || !stream) return;
       if (typeof $('video').requestVideoFrameCallback === 'function') {
@@ -327,17 +382,19 @@ $('start').onclick = async () => {
       const frameTime = metadata?.mediaTime ?? v.currentTime;
       if (frameTime === lastTime) { schedule(); return; }
       lastTime = frameTime;
-      const deep = ++captured % 6 === 0;
-      const budget = deep || captured % 3 === 1 ? 6000 : 2200;
-      const scale = Math.min(1, (deep ? 1800 : 1120) / Math.max(v.videoWidth, v.videoHeight));
+      const pass = captured++ % 3;
+      const budget = pass === 0 ? 1800 : 6000;
+      const scale = Math.min(1, [800, 1120, 1800][pass] / Math.max(v.videoWidth, v.videoHeight));
       const width = Math.round(v.videoWidth * scale), height = Math.round(v.videoHeight * scale);
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
-      ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-      const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
-        snapshot = new Uint8ClampedArray(input.data);
       try {
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
+          snapshot = new Uint8ClampedArray(input.data);
+        $('scan-status').textContent = `Reading frame ${captured}…`;
         const result = await decode(input, true, captured, budget);
         if (token !== cameraToken) return;
+        failures = 0;
         if (display(result)) {
           $('photo').width = canvas.width;
           $('photo').height = canvas.height;
@@ -349,8 +406,10 @@ $('start').onclick = async () => {
         }
       } catch (error) {
         if (token === cameraToken) {
+          scanLog.event('capture-error', { message: error.message });
           $('scan-status').textContent = error.message;
-          stop();
+          if (++failures >= 3) { stop(); $('scan-status').textContent = 'Decoder keeps failing. Save a scan report, or try Freeze & read on a new session.'; }
+          else schedule();
         }
         return;
       }
@@ -358,6 +417,7 @@ $('start').onclick = async () => {
     };
     schedule();
   } catch (error) {
+    scanLog.event('camera-error', { name: error.name, message: error.message });
     if (token === cameraToken) {
       stop();
       $('scan-status').textContent = error.message;
@@ -365,8 +425,32 @@ $('start').onclick = async () => {
   }
 };
 $('stop').onclick = () => {
+  scanLog.event('camera-stop');
   stop();
   $('scan-status').textContent = 'Camera stopped.';
+};
+$('camera-select').onchange = () => { if (stream) $('start').onclick(); };
+$('freeze').onclick = () => {
+  const v = $('video');
+  if (!stream || v.readyState < 2 || !v.videoWidth) return;
+  const scale = Math.min(1, 1800 / Math.max(v.videoWidth, v.videoHeight)), canvas = document.createElement('canvas');
+  canvas.width = Math.round(v.videoWidth * scale); canvas.height = Math.round(v.videoHeight * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+  scanLog.event('freeze', cameraInfo());
+  still(ctx.getImageData(0, 0, canvas.width, canvas.height), 'freeze');
+};
+$('report-images').onchange = () => { if (!$('report-images').checked) scanLog.clearFrames(); reportCount(); };
+$('save-report').onclick = () => {
+  try {
+    const report = scanLog.report(frame => {
+      const canvas = document.createElement('canvas'); canvas.width = frame.width; canvas.height = frame.height;
+      canvas.getContext('2d').putImageData(new ImageData(frame.data, frame.width, frame.height), 0, 0);
+      return canvas.toDataURL('image/png').split(',')[1];
+    }, $('report-images').checked, $('report-note').value);
+    download(new Blob([JSON.stringify(report)], { type: 'application/json' }), `prism-scan-report-${Date.now()}.json`);
+    $('report-count').textContent = 'Report saved. Attach the JSON file when reporting the issue.';
+  } catch (error) { $('report-count').textContent = `Could not save report: ${error.message}`; }
 };
 for (const id of ['soft', 'equations', 'spatial', 'refine', 'burst']) $(id).onchange = () => worker
   ?.postMessage({
@@ -413,6 +497,8 @@ window.addEventListener('pagehide', () => {
   cancelWorker('Page closed.');
   clearPayload();
 });
+window.addEventListener('error', event => scanLog.event('page-error', { message: String(event.message || 'Script error').slice(0, 500) }));
+window.addEventListener('unhandledrejection', event => scanLog.event('page-rejection', { message: String(event.reason?.message || 'Unhandled promise rejection').slice(0, 500) }));
 $('alphabet').innerHTML = P.alphabet.map(s =>
   `<div><svg viewBox="0 0 1 1" aria-hidden="true"><rect width="1" height="1" fill="white"/>${Alphabet19.svgSymbol(s,0,0)}</svg><span>${s.id} · ${s.name}</span></div>`
   ).join('');

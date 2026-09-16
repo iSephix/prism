@@ -45,3 +45,19 @@ test('a curved dense print recovers through a fitted cell grid instead of a flat
   const result = P.scan(image, { maxTimeMs: 6000 });
   assert.equal(result.text, text);
 });
+
+test('a tracked pose sampled at a different scale always uses the newest camera pixels', () => {
+  const text = 'Fresh scaled camera evidence', small = P.toRGBA(P.encode(text), 8);
+  const large = frame(small.width * 2, small.height * 2);
+  for (let y = 0; y < large.height; y++) for (let x = 0; x < large.width; x++) {
+    const source = (Math.floor(y / 2) * small.width + Math.floor(x / 2)) * 4;
+    large.data.set(small.data.subarray(source, source + 4), (y * large.width + x) * 4);
+  }
+  const poses = locator(small.data, small.width, small.height).map(p => ({ dimension: p.dimension,
+    sampleWidth: small.width, sampleHeight: small.height,
+    map(x, y) { const a = p.map(x, y); return { x: a.x * 2, y: a.y * 2 }; } }));
+  const session = P.createSession(), locate = () => poses;
+  assert.equal(P.scan(large, { locate, session, frameId: 1 }).text, text);
+  large.data.fill(255);
+  assert.equal(P.scan(large, { locate, session, frameId: 2 }).kind, 'none');
+});

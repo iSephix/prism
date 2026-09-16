@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#152237"><title>Prism 19 · Reference demo</title>
-  <link rel="stylesheet" href="style.css"><script defer src="../dist/prism19.js"></script><script defer src="demo.js"></script>
+  <link rel="stylesheet" href="style.css"><script defer src="../dist/prism19.js"></script><script defer src="diagnostics.js"></script><script defer src="demo.js"></script>
 </head>
 <body>
-  <header><a href="./">prism <strong>19</strong></a><span>Reference demo 0.3.2 · formats 2 + 3</span></header>
+  <header><a href="./">prism <strong>19</strong></a><span>Reference demo 0.3.3 · formats 2 + 3</span></header>
   <main>
     <div class="intro"><h1>Carry a message in color and shape.</h1><p>Generate here. Scan from another screen or a print. Everything runs on your device.</p></div>
     <div class="workspace">
@@ -31,11 +31,14 @@
         <div class="section-label">DECODE</div><h2 id="scan-title">Recover the message</h2>
         <p>Keep the whole code and white margin in view. Move close enough to see the patterns.</p>
         <div class="camera"><video id="video" playsinline muted hidden></video><canvas id="photo" hidden></canvas><div id="camera-idle">Camera is off</div></div>
-        <div class="buttons"><button id="start">Start camera</button><button id="stop" class="secondary" hidden>Stop</button><button id="upload" class="secondary">Choose image</button></div>
+        <div class="buttons"><button id="start">Start camera</button><button id="stop" class="secondary" hidden>Stop</button><button id="freeze" class="secondary" hidden>Freeze &amp; read</button><button id="upload" class="secondary">Choose image</button></div>
+        <div id="camera-choice" hidden><label for="camera-select">Camera / lens</label><select id="camera-select"><option value="">Automatic rear camera</option></select></div>
         <div id="camera-controls" hidden><button id="torch" class="secondary" aria-pressed="false" hidden>Light on</button><div id="zoom-control" hidden><label for="zoom">Camera zoom <output id="zoom-value">1×</output></label><input id="zoom" type="range" min="1" max="3" step="0.1" value="1"></div></div>
         <input id="file" type="file" accept="image/*" hidden>
         <details><summary>Decoder options</summary><label class="check"><input type="checkbox" id="soft" checked> Confidence-guided correction</label><label class="check"><input type="checkbox" id="equations" checked> Spare-cell equations</label><label class="check"><input type="checkbox" id="spatial" checked> Neighboring-cell correction</label><label class="check"><input type="checkbox" id="refine" checked> Sampling refinement</label><label class="check"><input type="checkbox" id="burst" checked> Fuse up to eight camera frames</label></details>
         <p id="scan-status" class="status" role="status">Ready to scan</p>
+        <div class="scan-report"><button id="save-report" class="secondary">Save scan report</button><span id="report-count" class="note">No attempts yet</span>
+        <details><summary>Report contents</summary><p class="note">Timings, camera settings and errors stay in memory on this device. Save the report and attach it when reporting the issue. Nothing is sent automatically. Save before reloading.</p><label class="check"><input id="report-images" type="checkbox" checked> Include up to 3 recent camera frames</label><p class="note">Frames show what your camera saw, including the code. Passphrases and decoded messages are excluded from the log.</p><label for="report-note">What happened? (optional)</label><textarea id="report-note" rows="2" maxlength="2000" placeholder="Good light, held steady, no result…"></textarea></details></div>
         <div id="unlock" hidden><label for="decode-password">Message passphrase</label><input id="decode-password" type="password" autocomplete="off"><button id="decrypt">Decrypt</button></div>
         <pre id="result" hidden></pre><button id="copy" class="secondary" hidden>Copy message</button>
         <img id="payload-image" class="payload-image" alt="Decoded image" hidden><audio id="payload-audio" controls preload="metadata" hidden></audio>

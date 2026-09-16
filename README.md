@@ -6,7 +6,7 @@ Prism 19 uses 19 optical symbols, Reed–Solomon correction over GF(19), and spa
 
 It requires a Prism 19-compatible scanner. Existing QR-only camera readers cannot decode this format.
 
-This is the **0.3.2 reference implementation** of **Optical Formats 2 and 3, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
+This is the **0.3.3 reference implementation** of **Optical Formats 2 and 3, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
 
 Version 0.3 unlocks up to **8,554 text bytes** or **8,550 raw file bytes** at L correction, and adds typed images, audio, JSON, calculations, links and contacts. All types can be encrypted. Existing format-2 codes remain readable; new content uses format 3. The default Q level holds 6,273 body bytes. See [payloads and capacity](docs/PAYLOADS.md), the [format-3 specification](spec/FORMAT3.md), and the earlier [decoder benchmarks](docs/BENCHMARKS.md).
 

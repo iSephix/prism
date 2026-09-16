@@ -52,7 +52,7 @@ With a session, `tracking` defaults to true. A recent grid position can be reuse
 
 Input must have positive integer width/height, at most 4096 per side and 4,194,304 pixels total, with an unsigned byte array of exactly `width*height*4` entries. Alpha is composited over white on a copy when necessary. Downsample large camera frames before calling. The included demo uses a worker and normally captures at most 1120 pixels on the longer dimension with a 2200 ms budget. The first frame, every third frame thereafter, and each sixth frame allow up to 6000 ms; each sixth frame also uses up to 1800 pixels. Clean frames return as soon as decoded. Still images allow 8000 ms. The demo submits fresh video frames after each completed attempt and skips duplicate video timestamps. A timer keeps capture active if video presentation callbacks stop arriving.
 
-`scan()` is synchronous. Run it in a worker to keep the UI responsive and send the next frame after the previous one finishes. `maxTimeMs` sets a cooperative search budget from 10 to 10000 milliseconds, default 2200, starting after public input validation and alpha normalization. Checks occur between stages and candidate searches; a locator or individual operation already executing can overrun the budget. This is not a hard wall-clock guarantee. An incomplete result receives `timedOut: true` when the search budget is exhausted. The scanner tries ordinary hard decisions across the poses in each channel, then attempts recovery before spending time locating the same code in another channel, within the budget. With refinement enabled and the built-in locator, a fallback groups separate printed codes and fits the observed cell grid to curved paper. Header and body checks still determine acceptance. A larger budget may improve difficult still-image recovery.
+`scan()` is synchronous. Run it in a worker to keep the UI responsive and send the next frame after the previous one finishes. `maxTimeMs` sets a cooperative search budget from 10 to 10000 milliseconds, default 2200, starting after public input validation and alpha normalization. Checks occur between stages and candidate searches; a locator or individual operation already executing can overrun the budget. This is not a hard wall-clock guarantee. An incomplete result receives `timedOut: true` when the search budget is exhausted. The scanner tries ordinary hard decisions across the poses in each channel, then attempts recovery before spending time locating the same code in another channel, within the budget. With refinement enabled and the built-in locator, a fallback groups separate printed codes and fits the observed cell grid to curved paper. Header and body checks still determine acceptance. Large finder centers also trigger retries at smaller image scales, with fresh image samples for every capture. A larger budget may improve difficult still-image recovery.
 
 The method returns one of:
 
@@ -66,7 +66,7 @@ The method returns one of:
 
 Success diagnostics include `grid`, `frames`, `ms`, `decoder`, `corrected`, `repaired`, `equations` and `checksum`. `ms` covers this API call, not capture time or previous frames. `frames` counts frames contributing to the successful reconstruction, not every attempted frame. `corrected` is a path-dependent correction diagnostic, not a measured number of physical defects. `repaired` counts data field symbols solved from equations; `equations` counts rows used in the accepted per-column systems, including redundant rows for consistent systems or the independent basis for candidate systems. All recovered payloads must satisfy the packet CRC and padding checks.
 
-Set `diagnostics: true` to add `result.diagnostics` on any optical scan result. It contains `locateCalls`, `candidates`, `observations`, `tracked` (whether the accepted result used the recent pose), and stage totals `locateMs`, `observeMs`, `classifyMs`, `decodeMs`. Stage times exclude other work such as input normalization and grayscale conversion, so they need not sum to `ms`. Treat diagnostics as measurements, not protocol signaling or evidence of a physical defect count.
+Set `diagnostics: true` to add `result.diagnostics` on any optical scan result. It contains `locateCalls`, `candidates`, `observations`, `tracked` (whether the accepted result used the recent pose), and stage totals `locateMs`, `observeMs`, `classifyMs`, `decodeMs`. Newer results also report `unusableObservations`, `bestSeparation`, `headerMatches` and `geometryCandidates`. Stage times exclude other work such as input normalization and grayscale conversion, so they need not sum to `ms`. Treat diagnostics as measurements, not protocol signaling or evidence of a physical defect count.
 
 ## Supply your own locator
 
@@ -91,3 +91,28 @@ Use platform Web Crypto in a secure browser context or Node 22+. `encodeEnvelope
 ## Errors and privacy
 
 Invalid API arguments throw `TypeError` or `RangeError`; malformed/unsupported optical messages normally return `none` or `partial19`. Image-decoder and cryptographic failures throw errors. The module performs no fetches, analytics, persistence, credential lookup or remote execution. Host applications control camera access, storage and how recovered text is used.
+
+
+### Camera reports and replay
+
+The reference demo offers **Save scan report**, **Freeze & read**, and camera/lens
+selection when the browser exposes multiple cameras. Live captures alternate
+800/1120/1800 pixels with 1800/6000/6000 ms search budgets; frozen and uploaded
+images receive 10000 ms. A timeout restarts the worker and capture continues,
+with a stop after three consecutive worker failures. Search deadlines remain
+cooperative; the UI watchdog allows at least 10 seconds and 4 seconds beyond the
+requested search budget.
+
+Reports are device-local JSON (`schema: prism-scan-report`, `schemaVersion: 1`).
+They record at most 160 events and three lossless PNG frames, capped at four
+megapixels total. Image inclusion can be disabled, which also clears retained
+frames. No report is uploaded automatically or persisted across a reload.
+Passphrases, recovered text and payload bytes are not log metadata. The optional
+frames can contain readable codes and anything else in the camera's view.
+
+Save the report before reloading, then attach it to a private debugging discussion.
+Replay the included frames locally with `npm run test:report -- path/to/report.json`.
+Replay outputs scan metadata, never recovered content. It uses a fresh scan per
+saved frame and a 10-second allowance; the exported camera settings, timeouts and
+worker events describe the original session. This is not a phone performance
+benchmark or a replay of frames that were not retained.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.3 — 2026-09-16
+
+- Retry finder detection and symbol sampling at smaller image scales when large,
+  nonzero black finder centers defeat local thresholding. Tracked poses always
+  sample the current frame; no image or decoded-payload cache is used.
+- Cycle live capture through 800, 1120 and 1800 pixels. Recover from isolated
+  worker timeouts without stopping the camera; expose camera/lens selection and
+  a Freeze & read action with a longer still-image budget.
+- Add device-local scan reports with bounded events, stage timings, camera
+  settings, errors and up to three lossless captured frames. Reports download only
+  on request; decoded payloads and passphrases are excluded from log metadata.
+- Add report replay tooling and camera recovery/report regression tests.
+- Encoding, the optical alphabet and wire formats remain unchanged.
+
 ## 0.3.2 — photographed prints and multiple codes
 
 - Group finder markers locally so a sheet of stickers does not create a fictitious code from unrelated corners.

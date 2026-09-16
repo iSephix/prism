@@ -51,3 +51,29 @@ The 0.3.1 camera regression checks cover a recognized code with an erased Reed�
 The 0.3.2 physical regression corpus contains three private photographs: a six-sticker sheet, a dense single code, and an angled sticker sheet. All three original 1080×1440 images and all three 840×1120 camera equivalents recover matching body SHA-256 values. The sticker photographs recover the same 124-byte encrypted envelope; the dense print recovers 1194 bytes of plaintext in a 69×69 grid. No passphrase was supplied, so encrypted plaintext authentication was not tested. The prior 0.3.1 reader returned no result on all three full photographs even with a 10-second budget. These six cases are a regression corpus, not a general physical success rate.
 
 Public automated regressions generate a six-code sheet and a curved dense code with independent test payloads. To run an additional private corpus, use `npm run test:physical -- /path/to/manifest.json`. Each manifest entry supplies a PNG path, expected result kind and expected body SHA-256; see `test/physical.cjs`. Camera captures, expected content and hashes are not bundled in the release.
+
+
+The 0.3.3 development checks add a fourth private full photograph, its camera-sized
+copy, and a crop of that same print. The 0.3.2 reader misses the new full image and
+camera-sized copy on this host. The smaller crop already decodes on this host,
+even though the user reports failure when choosing that image on their phone.
+This difference is unresolved without evidence captured by that phone.
+
+All nine retained image cases recover matching optical body bytes through the
+reference worker with a 6000 ms search allowance in an isolated JavaScript host.
+Encrypted bytes are recovered without a passphrase; plaintext authentication is
+not claimed. These are tuning/regression images, not held-out physical trials.
+
+The reference demo now records the real camera capture dimensions, decoder/worker
+versions, stage measurements and errors. Its optional lossless frames can be
+replayed with `npm run test:report`. Camera tests exercise worker progress,
+continuation after a timeout, lens selection, freezing during an active decode,
+and report export without decoded content or passphrases. No current live phone
+success rate is established by these software tests.
+
+
+The [0.1-to-0.3.3 paired synthetic report](benchmarks/results-0.3.3.json) records
+48 cases, two alternating trials per decoder and source hashes for the retained
+0.1.0 baseline and candidate. It reports no accepted wrong payloads and no lost
+baseline successes in this suite. It is a synthetic regression comparison, not a
+measurement of the user's v0.1 phone session or evidence of general camera superiority.

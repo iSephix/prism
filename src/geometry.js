@@ -203,8 +203,7 @@
     });
     return total / 38;
   }
-  function* search(image, deadline) {
-    const found = locator.patterns(image.data, image.width, image.height);
+  function* searchOne(image, deadline, found = locator.patterns(image.data, image.width, image.height)) {
     if (!found || expired(deadline)) return;
     const points = found.finderPatterns.filter(p => p.size >= 6 && p.score / p.size ** 2 < .2).slice(0, 40);
     const groups = [], seen = new Set();
@@ -250,6 +249,33 @@
         yield { ...fitted, photometryMap: undefined };
         yield fitted;
       }
+    }
+  }
+  // Large solid finder centers can exceed the thresholding window. Retry at
+  // another scale. Store only sampling dimensions and geometry in tracked poses;
+  // the core always samples the current frame, never a previous frame's pixels.
+  function smaller(image, side) {
+    const scale = Math.min(1, side / Math.max(image.width, image.height));
+    return C.resize(image, Math.round(image.width * scale), Math.round(image.height * scale));
+  }
+  function* search(image, deadline, preferSmall = false) {
+    // If the ordinary finder geometry cannot sample even one complete grid,
+    // try the alternate threshold scale before an expensive full-image search.
+    const found = locator.patterns(image.data, image.width, image.height);
+    preferSmall = preferSmall && found?.finderPatterns.some(p => p.size >= 40 && p.score / p.size ** 2 < .2);
+    for (const side of preferSmall ? [960, 0, 640] : [0, 960, 640]) {
+      if (!side) { yield* searchOne(image, deadline, found); continue; }
+      if (expired(deadline) || Math.max(image.width, image.height) <= side * 1.15) continue;
+      const reduced = smaller(image, side), sx = image.width / reduced.width, sy = image.height / reduced.height;
+      const lift = map => (x, y) => { const p = map(x, y); return { x: p.x * sx, y: p.y * sy }; };
+      function translated(pose) { return { ...pose, map: lift(pose.map),
+        photometryMap: pose.photometryMap && lift(pose.photometryMap),
+        sampleWidth: reduced.width, sampleHeight: reduced.height }; }
+      for (const pose of locator(reduced.data, reduced.width, reduced.height)) {
+        if (expired(deadline)) return;
+        yield translated(pose);
+      }
+      for (const pose of searchOne(reduced, deadline)) yield translated(pose);
     }
   }
   function locate(...args) { return locator(...args); }
