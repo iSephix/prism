@@ -357,4 +357,38 @@ window.addEventListener('pagehide', () => {
 $('alphabet').innerHTML = P.alphabet.map(s =>
   `<div><svg viewBox="0 0 1 1" aria-hidden="true"><rect width="1" height="1" fill="white"/>${Alphabet19.svgSymbol(s,0,0)}</svg><span>${s.id} · ${s.name}</span></div>`
   ).join('');
+
+let experimentalModule = null;
+async function setMode(mode, updateURL = true) {
+  const experimental = mode === 'experimental';
+  $('standard-view').hidden = experimental;
+  $('experimental-view').hidden = !experimental;
+  $('mode-standard').classList.toggle('active', !experimental);
+  $('mode-experimental').classList.toggle('active', experimental);
+  $('mode-standard').setAttribute('aria-pressed', String(!experimental));
+  $('mode-experimental').setAttribute('aria-pressed', String(experimental));
+  if (experimental) {
+    stop();
+    if (!experimentalModule) {
+      $('sheet-status').textContent = 'Loading experimental capacity lab…';
+      try {
+        experimentalModule = import('/experiments/mono-fractal/app.js');
+        await experimentalModule;
+      } catch (error) {
+        experimentalModule = null;
+        $('sheet-status').textContent = `Could not load experimental mode: ${error.message}`;
+      }
+    }
+  }
+  if (updateURL) {
+    const url = new URL(location.href);
+    if (experimental) url.searchParams.set('mode', 'experimental');
+    else url.searchParams.delete('mode');
+    history.replaceState(null, '', url);
+  }
+}
+$('mode-standard').onclick = () => setMode('standard');
+$('mode-experimental').onclick = () => setMode('experimental');
+const initialMode = new URL(location.href).searchParams.get('mode') === 'experimental' ? 'experimental' : 'standard';
+setMode(initialMode, false);
 generate();
