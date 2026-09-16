@@ -16,7 +16,7 @@ const types = {
   '.json': 'application/json',
   '.md': 'text/plain; charset=utf-8'
 };
-const allowed = new Set(['examples', 'dist', 'spec', 'docs', 'LICENSE', 'NOTICE', 'THIRD_PARTY.md',
+const allowed = new Set(['examples', 'experiments', 'dist', 'spec', 'docs', 'LICENSE', 'NOTICE', 'THIRD_PARTY.md',
   'README.md'
 ]);
 const server = http.createServer((req, res) => {
