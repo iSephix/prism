@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PRISM Mono-Fractal Capacity Lab</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#111;background:#f5f5f5}*{box-sizing:border-box}body{margin:0}main{max-width:1120px;margin:auto;padding:24px}h1{margin:0 0 6px;font-size:clamp(28px,5vw,48px)}h2{margin-top:0}.muted{color:#666}.card{background:#fff;border:1px solid #ddd;border-radius:16px;padding:18px;margin:16px 0}label{display:block;font-weight:650;margin:10px 0 4px}input,select,button{font:inherit}select,input[type=file]{width:100%;padding:9px;border:1px solid #bbb;border-radius:8px;background:white}button{border:0;border-radius:9px;padding:10px 14px;background:#111;color:white;cursor:pointer;margin:5px 6px 5px 0}button.secondary{background:#e8e8e8;color:#111}button:disabled{opacity:.45;cursor:not-allowed}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.preview-wrap{position:relative;overflow:auto;max-height:72vh;background:#222;border-radius:10px}.preview{display:block;max-width:100%;height:auto;cursor:crosshair}.status{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:pre-wrap;background:#f3f3f3;border-radius:9px;padding:10px;min-height:44px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.metric{background:#f5f5f5;border-radius:10px;padding:12px}.metric strong{display:block;font-size:22px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:right}th:first-child,td:first-child{text-align:left}canvas.matrix{width:100%;max-width:700px;image-rendering:pixelated;border:1px solid #ddd}.pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#eee;font-size:12px;margin-right:5px}code{background:#eee;padding:2px 5px;border-radius:5px}
+  </style>
+</head>
+<body><main>
+  <div class="pill">experimental</div><div class="pill">B/W</div><div class="pill">dependency-free</div>
+  <h1>PRISM Mono-Fractal Capacity Lab</h1>
+  <p class="muted">Measure the empirical information capacity of black/white 8×8 microtextures through your real printer → paper → camera channel.</p>
+
+  <section class="card">
+    <h2>1 · Generate the target</h2>
+    <div class="grid">
+      <div><label for="pitch">Macrocell pitch</label><select id="pitch"><option value="1">1.0 mm</option><option value="1.5">1.5 mm</option><option value="2" selected>2.0 mm</option><option value="2.5">2.5 mm</option><option value="3">3.0 mm</option></select></div>
+      <div><label for="seed">Experiment seed</label><input id="seed" type="number" value="1951"></div>
+    </div>
+    <p class="muted">The sheet contains 256 balanced 8×8 glyphs, each repeated four times in a deterministic 32×32 layout. Print the exact same sheet twice as independent physical copies A and B, at 100% scale with no “fit to page”.</p>
+    <button id="download">Download printable SVG</button><button id="open" class="secondary">Open SVG for printing</button>
+    <div id="sheet-status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Calibrate on print A</h2>
+    <input id="file-a" type="file" accept="image/*" capture="environment">
+    <p class="muted">Photograph the complete target. Auto-detection searches for the four large black fiducials; if it misses, click their centers in order: <b>top-left → top-right → bottom-right → bottom-left</b>.</p>
+    <button id="auto-a" class="secondary" disabled>Auto-detect corners</button><button id="reset-a" class="secondary" disabled>Set corners manually</button><button id="analyze-a" disabled>Build templates</button>
+    <div class="preview-wrap"><canvas id="preview-a" class="preview"></canvas></div>
+    <div id="status-a" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>3 · Blind test on independent print B</h2>
+    <input id="file-b" type="file" accept="image/*" capture="environment">
+    <button id="auto-b" class="secondary" disabled>Auto-detect corners</button><button id="reset-b" class="secondary" disabled>Set corners manually</button><button id="analyze-b" disabled>Run blind test</button>
+    <div class="preview-wrap"><canvas id="preview-b" class="preview"></canvas></div>
+    <div id="status-b" class="status"></div>
+  </section>
+
+  <section class="card" id="results" hidden>
+    <h2>4 · Capacity result</h2>
+    <div class="metrics">
+      <div class="metric"><span>256-way accuracy</span><strong id="accuracy">—</strong></div>
+      <div class="metric"><span>Empirical I(X;Y)</span><strong id="mi">—</strong></div>
+      <div class="metric"><span>Information density</span><strong id="density">—</strong></div>
+      <div class="metric"><span>Nearest-template margin</span><strong id="margin">—</strong></div>
+    </div>
+    <h3>Best training-only codebooks</h3>
+    <div class="table-wrap"><table><thead><tr><th>States</th><th>Raw bits/cell</th><th>Test accuracy</th><th>I(X;Y)</th><th>I/mm²</th></tr></thead><tbody id="subset-body"></tbody></table></div>
+    <h3>256×256 confusion matrix</h3>
+    <canvas id="confusion" class="matrix" width="256" height="256"></canvas>
+    <p class="muted">A bright diagonal is good. Subset selection uses only print-A templates; metrics are evaluated on print B.</p>
+    <button id="export">Export results JSON</button>
+  </section>
+
+  <section class="card">
+    <h2>Protocol</h2>
+    <p>For each pitch: print two copies, calibrate from A, evaluate B. Then repeat with normal indoor light, oblique capture and greater distance. Do not use the same physical print for both stages if you want the result to mean anything.</p>
+  </section>
+
+  <script src="app.js"></script>
+</main></body></html>
