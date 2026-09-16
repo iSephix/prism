@@ -8,6 +8,7 @@ const pub = path.join(root, 'public');
 fs.rmSync(pub, { recursive: true, force: true });
 fs.mkdirSync(pub, { recursive: true });
 fs.cpSync(path.join(root, 'examples'), pub, { recursive: true });
+fs.cpSync(path.join(root, 'experiments'), path.join(pub, 'experiments'), { recursive: true });
 fs.cpSync(path.join(root, 'dist'), path.join(pub, 'dist'), { recursive: true });
 fs.cpSync(path.join(root, 'spec'), path.join(pub, 'spec'), { recursive: true });
 fs.cpSync(path.join(root, 'docs'), path.join(pub, 'docs'), { recursive: true });
@@ -24,4 +25,4 @@ html = html
   .replace('../LICENSE', 'LICENSE')
   .replace('../THIRD_PARTY.md', 'THIRD_PARTY.md');
 fs.writeFileSync(indexPath, html);
-console.log('Vercel public site prepared.');
+console.log('Vercel public site prepared, including experimental mode assets.');
