@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
+// Temporary global binding for app.js's farthestOrder() assignment. In strict mode,
+// assigning to an undeclared identifier throws (Safari exposed this immediately).
+// Keep this until farthestOrder() is refactored to declare minD locally.
+var minD;
+
 function binaryEntropy(p) {
   if (p <= 0 || p >= 1) return 0;
   return -p * Math.log2(p) - (1 - p) * Math.log2(1 - p);
