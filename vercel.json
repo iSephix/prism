@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build && rm -rf public && mkdir -p public && cp -R examples/. public/ && mkdir -p public/dist && cp -R dist/. public/dist/ && mkdir -p public/spec public/docs && cp -R spec/. public/spec/ && cp -R docs/. public/docs/ && cp LICENSE THIRD_PARTY.md public/ && sed -i 's#../dist/prism19.js#dist/prism19.js#g; s#../spec/FORMAT.md#spec/FORMAT.md#g; s#../docs/API.md#docs/API.md#g; s#../LICENSE#LICENSE#g; s#../THIRD_PARTY.md#THIRD_PARTY.md#g' public/index.html",
+  "outputDirectory": "public",
+  "cleanUrls": true
+}
