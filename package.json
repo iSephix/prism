@@ -1,6 +1,6 @@
 {
   "name": "prism19",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "An open 19-symbol optical code with GF(19) recovery, a camera decoder and a portable format specification.",
   "license": "Apache-2.0",
   "main": "./index.cjs",

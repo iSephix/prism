@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.4 — 2026-09-16
+
+- Keep live capture on an independent timer while the worker decodes. Check a
+  small pixel fingerprint as well as media time, so a stalled presentation clock
+  cannot permanently suppress fresh frames. Keep one decode outstanding, retain
+  cancellation and timeout recovery, and log scheduler heartbeats and completion.
+- Start live scans at 1120 pixels, then try 1800 and 800 pixels. Keep Freeze & read
+  and the existing bounded, local-only report export.
+- Refine curved grids with independently joined ink-component centers. Align the
+  known pilot shapes locally before calibrating symbols; retain smooth-grid
+  fallbacks and all header, error-correction and payload CRC acceptance checks.
+- Recover the complete dense frame from a phone report, verified against its
+  independently retained body bytes. Preserve the nine earlier private photo
+  successes and add an independent synthetic uneven-bend regression.
+- Keep the optical alphabet, encoding, wire formats and dependencies unchanged.
+
 ## 0.3.3 — 2026-09-16
 
 - Retry finder detection and symbol sampling at smaller image scales when large,

@@ -780,7 +780,7 @@
     const start = performance.now(), deadline = start + (options.maxTimeMs ?? 2200);
     const stats = { locateCalls: 0, candidates: 0, observations: 0, tracked: false,
       locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0,
-      unusableObservations: 0, bestSeparation: 0, headerMatches: 0, geometryCandidates: 0 };
+      unusableObservations: 0, bestSeparation: 0, headerMatches: 0, geometryCandidates: 0, cellRefinements: 0 };
     const hard = { soft: false, equations: false }, advanced = options.soft !== false ||
       options.equations !== false || options.spatial !== false || options.refine !== false;
     const config = { ...options, deadline };
@@ -836,6 +836,7 @@
       if (!Number.isInteger(n) || n < 25 || n > 145 || (n - 25) % 4 || typeof location.map !== 'function')
         return null;
       stats.candidates++;
+      if (location.cellRefined) stats.cellRefinements++;
       const obs = observe(location);
       if (!obs) { stats.unusableObservations++; return null; }
       stats.bestSeparation = Math.max(stats.bestSeparation, obs.separation);

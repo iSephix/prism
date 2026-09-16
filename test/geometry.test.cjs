@@ -19,14 +19,16 @@ test('a sheet of six independent codes is read without combining finders from di
   assert.ok(messages.has(result.text));
   assert.equal(result.kind, 'prism19');
 });
-function curved(image) {
+function curved(image, ripples = false) {
   const out = frame(image.width, image.height), size = image.width;
   for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) {
     let sx = x, sy = y;
     for (let step = 0; step < 6; step++) {
       const u = sx / size, v = sy / size;
-      sx = x - 10 * 4 * v * (1 - v) * (2 * u - 1);
-      sy = y - 16 * 4 * u * (1 - u);
+      sx = x - (ripples ? 4 * Math.sin(v * Math.PI * 3) * Math.sin(u * Math.PI) :
+        10 * 4 * v * (1 - v) * (2 * u - 1));
+      sy = y - (ripples ? 6 * Math.sin(u * Math.PI * 3) * Math.sin(v * Math.PI) :
+        16 * 4 * u * (1 - u));
     }
     const ix = Math.floor(sx), iy = Math.floor(sy), u = sx - ix, v = sy - iy;
     if (ix < 0 || iy < 0 || ix + 1 >= image.width || iy + 1 >= image.height) continue;
@@ -44,6 +46,16 @@ test('a curved dense print recovers through a fitted cell grid instead of a flat
   assert.equal(P.scan(image, { locate: locator, maxTimeMs: 6000 }).kind, 'none');
   const result = P.scan(image, { maxTimeMs: 6000 });
   assert.equal(result.text, text);
+});
+
+test('local cell centers recover uneven bends and never reuse pixels from the previous print', () => {
+  const text = 'A printed code must survive bends between its corner markers. '.repeat(19);
+  const image = curved(P.toRGBA(P.encode(text, { ecc: 'L', version: 2 }), 12), true);
+  const session = P.createSession(), result = P.scan(image, { session, frameId: 1, maxTimeMs: 6000, diagnostics: true });
+  assert.equal(result.text, text);
+  assert.ok(result.diagnostics.cellRefinements > 0, 'The independent cell registration was exercised');
+  image.data.fill(255);
+  assert.equal(P.scan(image, { session, frameId: 2, maxTimeMs: 6000 }).kind, 'none');
 });
 
 test('a tracked pose sampled at a different scale always uses the newest camera pixels', () => {

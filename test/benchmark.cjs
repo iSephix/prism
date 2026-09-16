@@ -14,7 +14,8 @@ if (baselineCommit !== null && !/^[0-9a-f]{40}$/.test(baselineCommit || ''))
   throw Error('--baseline-commit requires a full Git commit SHA');
 function sourceHashes(directory) {
   return Object.fromEntries(['package.json', 'src/codec.js', 'src/gf19.js', 'src/api.js',
-    'src/alphabet19.js', 'vendor/jsqr-locator.js'].map(file => [file,
+    'src/alphabet19.js', 'src/geometry.js', 'vendor/jsqr-locator.js'].filter(file =>
+      fs.existsSync(path.join(directory, file))).map(file => [file,
       crypto.createHash('sha256').update(fs.readFileSync(path.join(directory, file))).digest('hex')]));
 }
 const text = 'Compare the same payload at the same camera footprint. '.repeat(3);

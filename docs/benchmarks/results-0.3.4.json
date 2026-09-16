@@ -1,0 +1,1935 @@
+{
+  "baselineVersion": "0.3.3",
+  "candidateVersion": "0.3.4",
+  "baselineCommit": "16bc60b194b79c2808ef9179e6faabf79dea954b",
+  "baselineSourceSHA256": {
+    "package.json": "4e8fe7804ab572851a70f573646eac10969172bc3167de510db5a045001889bc",
+    "src/codec.js": "8b48920c8e5d6dfd1d9f656b25b297972526f7f65b68ccfe7350ec10ebd18aef",
+    "src/gf19.js": "342a8583a5eb90b3c627558980759df7e6b11a5250fdfcc95ee90afa079784e6",
+    "src/api.js": "01b6d4bd9909326062ce759bb2ca23472c4cfbafcc75bab964e1583a3784f4f8",
+    "src/alphabet19.js": "3a9417dfb3bc9a748c2e2108bf5b40c5256724e2555bb1e889b182b6d89731c8",
+    "src/geometry.js": "77f88bfd822befdc76ea4b2df3ea5d1c1ff7e11c6140cd9d0db3b6a4e0c47d40",
+    "vendor/jsqr-locator.js": "cc0377c8ed4e8ab17a4ceccedd09bfe51e328bb4225047655cf479ad520cd018"
+  },
+  "candidateSourceSHA256": {
+    "package.json": "7351d9e52a379e25905f982847754eb3a3c7b94efd85128334388b87402e94e3",
+    "src/codec.js": "06dcd25cf29d1aa185d75ddab85d468b19ea8c098d92096afe5fe442b3dd305b",
+    "src/gf19.js": "342a8583a5eb90b3c627558980759df7e6b11a5250fdfcc95ee90afa079784e6",
+    "src/api.js": "56532061a43677d3f69031b69b4e0a64fc9ab6da0cab5bd977a93689b68de194",
+    "src/alphabet19.js": "3a9417dfb3bc9a748c2e2108bf5b40c5256724e2555bb1e889b182b6d89731c8",
+    "src/geometry.js": "7e3af29c0a2d51f2657823ebc9e21196b92a81dfa6b4568e53bfc1063ba1a6a0",
+    "vendor/jsqr-locator.js": "cc0377c8ed4e8ab17a4ceccedd09bfe51e328bb4225047655cf479ad520cd018"
+  },
+  "runtime": "v24.19.0",
+  "platform": "linux",
+  "arch": "x64",
+  "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "measuredAt": "2026-09-16T16:55:11.579Z",
+  "physicalTrial": false,
+  "jabComparison": false,
+  "repeats": 2,
+  "cases": [
+    {
+      "name": "clean-0",
+      "group": "clean",
+      "width": 396,
+      "height": 396,
+      "expectedBytes": 1,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 17.526362000000063,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.00038100000029,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.143355000000156,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.978693000000021,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "clean-1",
+      "group": "clean",
+      "width": 396,
+      "height": 396,
+      "expectedBytes": 17,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 42.60119500000019,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 16.265792000000147,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 55.42760500000031,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.064294000000245,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "clean-2",
+      "group": "clean",
+      "width": 396,
+      "height": 396,
+      "expectedBytes": 29,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.038236000000325,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.352198000000044,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 15.193949999999859,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 14.384241999999631,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "clean-3",
+      "group": "clean",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 35.60952700000007,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.61643200000026,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 31.414127000000008,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 29.081334999999854,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "clean-4",
+      "group": "clean",
+      "width": 924,
+      "height": 924,
+      "expectedBytes": 1200,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 127.3868480000001,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 139.8808429999999,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 143.53408799999988,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 146.6713749999999,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "clean-5",
+      "group": "clean",
+      "width": 924,
+      "height": 924,
+      "expectedBytes": 1040,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 153.86863099999982,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 129.99762800000008,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 123.2150660000002,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 121.89640800000006,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "moderate-911",
+      "group": "moderate",
+      "seed": 911,
+      "width": 480,
+      "height": 480,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 32.684369999999944,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 38.05516800000032,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 41.332880999999816,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 52.92066399999976,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "moderate-912",
+      "group": "moderate",
+      "seed": 912,
+      "width": 480,
+      "height": 480,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 35.74607799999967,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 34.54203800000005,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 39.89098800000011,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 36.56185699999969,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "moderate-913",
+      "group": "moderate",
+      "seed": 913,
+      "width": 480,
+      "height": 480,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 40.01477300000033,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 37.59990299999936,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 35.11008999999967,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 31.918961999999738,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "moderate-914",
+      "group": "moderate",
+      "seed": 914,
+      "width": 480,
+      "height": 480,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 28.047072999999727,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 24.868297999999413,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 31.302607999999964,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.880208999999923,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "moderate-915",
+      "group": "moderate",
+      "seed": 915,
+      "width": 480,
+      "height": 480,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.82592300000033,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 24.111393999999564,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.53797399999985,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 31.45655699999952,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "moderate-916",
+      "group": "moderate",
+      "seed": 916,
+      "width": 480,
+      "height": 480,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.641313000000082,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.3614120000002,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 37.3840339999997,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.370144000000437,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "small-blurred-911",
+      "group": "small-blurred",
+      "seed": 911,
+      "width": 300,
+      "height": 300,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 12.286654999999882,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 12.310107000000244,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.88388600000053,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.202825000000303,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "small-blurred-912",
+      "group": "small-blurred",
+      "seed": 912,
+      "width": 300,
+      "height": 300,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.387377000000015,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 17.865700000000288,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.358064000000013,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.380648000000292,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "small-blurred-913",
+      "group": "small-blurred",
+      "seed": 913,
+      "width": 300,
+      "height": 300,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.340535000000273,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 17.6394020000007,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.514240000000427,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.246433000000252,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "small-blurred-914",
+      "group": "small-blurred",
+      "seed": 914,
+      "width": 300,
+      "height": 300,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.330684999999903,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 12.474159000000327,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.618020999999317,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.145164999999906,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "small-blurred-915",
+      "group": "small-blurred",
+      "seed": 915,
+      "width": 300,
+      "height": 300,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 14.169541000000208,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.519492000000355,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.021961000000374,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.082647000000179,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "small-blurred-916",
+      "group": "small-blurred",
+      "seed": 916,
+      "width": 300,
+      "height": 300,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.36583900000005,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 14.520966999999473,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 13.546733000000131,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 14.780036999999538,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "patch-damage-911",
+      "group": "patch-damage",
+      "seed": 911,
+      "width": 400,
+      "height": 400,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 400.3711809999995,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 350.7685279999996,
+          "decoder": "robust pilot calibration"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 417.0579369999996,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 358.3523179999993,
+          "decoder": "robust pilot calibration"
+        }
+      ]
+    },
+    {
+      "name": "patch-damage-912",
+      "group": "patch-damage",
+      "seed": 912,
+      "width": 400,
+      "height": 400,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 431.70779799999946,
+          "decoder": "soft RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 406.6363190000002,
+          "decoder": "soft RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 449.6571220000005,
+          "decoder": "soft RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 443.0980760000002,
+          "decoder": "soft RS"
+        }
+      ]
+    },
+    {
+      "name": "patch-damage-913",
+      "group": "patch-damage",
+      "seed": 913,
+      "width": 400,
+      "height": 400,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 83.1970939999992,
+          "decoder": "joint neighboring-cell model"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 69.34405700000025,
+          "decoder": "joint neighboring-cell model"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 85.47651299999961,
+          "decoder": "joint neighboring-cell model"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 79.7263699999985,
+          "decoder": "joint neighboring-cell model"
+        }
+      ]
+    },
+    {
+      "name": "patch-damage-914",
+      "group": "patch-damage",
+      "seed": 914,
+      "width": 400,
+      "height": 400,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 84.12777899999855,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 97.60525899999993,
+          "decoder": "robust pilot calibration"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 85.35647600000084,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 82.53059600000051,
+          "decoder": "robust pilot calibration"
+        }
+      ]
+    },
+    {
+      "name": "patch-damage-915",
+      "group": "patch-damage",
+      "seed": 915,
+      "width": 400,
+      "height": 400,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.93199199999981,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 27.747810000000754,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.6169149999987,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 24.69526600000063,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "patch-damage-916",
+      "group": "patch-damage",
+      "seed": 916,
+      "width": 400,
+      "height": 400,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 331.01075800000035,
+          "decoder": "joint neighboring-cell model"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 319.7366689999999,
+          "decoder": "joint neighboring-cell model"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 319.2345059999989,
+          "decoder": "joint neighboring-cell model"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 321.90772500000094,
+          "decoder": "joint neighboring-cell model"
+        }
+      ]
+    },
+    {
+      "name": "uneven-light-911",
+      "group": "uneven-light",
+      "seed": 911,
+      "width": 420,
+      "height": 420,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.218924000000698,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.583377000000837,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.06968500000039,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.395743000000948,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "uneven-light-912",
+      "group": "uneven-light",
+      "seed": 912,
+      "width": 420,
+      "height": 420,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 24.904657999999472,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.597717000000557,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.941006999999445,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.85568500000045,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "uneven-light-913",
+      "group": "uneven-light",
+      "seed": 913,
+      "width": 420,
+      "height": 420,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.63596999999936,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.769929000000047,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.07632399999966,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.825268000000506,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "uneven-light-914",
+      "group": "uneven-light",
+      "seed": 914,
+      "width": 420,
+      "height": 420,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.431902999998783,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.875357999999324,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.859435000000303,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.022064000000682,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "uneven-light-915",
+      "group": "uneven-light",
+      "seed": 915,
+      "width": 420,
+      "height": 420,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.571969999999055,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 27.311658000000534,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.469263000000865,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.692113000000973,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "uneven-light-916",
+      "group": "uneven-light",
+      "seed": 916,
+      "width": 420,
+      "height": 420,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.206634000000122,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.731058000001212,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.22381099999984,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.904952000000776,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "pilots-1",
+      "group": "pilot-damage",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.32191800000146,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 27.02357099999972,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.424897000000783,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.990222000000358,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "pilots-3",
+      "group": "pilot-damage",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 29.246492000000217,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.95524899999873,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 25.751830999999584,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.2303780000002,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "pilots-5",
+      "group": "pilot-damage",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.784686000000875,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.827669000000242,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 27.10297200000059,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 26.512864000000263,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "pilots-8",
+      "group": "pilot-damage",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 78.29219499999999,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 73.51288399999976,
+          "decoder": "robust pilot calibration"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 73.5793620000004,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 77.03443100000004,
+          "decoder": "robust pilot calibration"
+        }
+      ]
+    },
+    {
+      "name": "pilots-12",
+      "group": "pilot-damage",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 74.35531100000117,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 86.78489300000001,
+          "decoder": "robust pilot calibration"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 88.0934840000009,
+          "decoder": "robust pilot calibration"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 79.23904500000026,
+          "decoder": "robust pilot calibration"
+        }
+      ]
+    },
+    {
+      "name": "pilots-19",
+      "group": "pilot-damage",
+      "width": 492,
+      "height": 492,
+      "expectedBytes": 165,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 24.23279100000036,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.68571200000042,
+          "decoder": "hard RS"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 24.255331000000297,
+          "decoder": "hard RS"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 23.1893799999998,
+          "decoder": "hard RS"
+        }
+      ]
+    },
+    {
+      "name": "equations-1",
+      "group": "unreliable-equations",
+      "width": 528,
+      "height": 528,
+      "expectedBytes": 38,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.47646900000109,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.07314899999983,
+          "decoder": "repair equations"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.027458999999,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.117151000000376,
+          "decoder": "repair equations"
+        }
+      ]
+    },
+    {
+      "name": "equations-2",
+      "group": "unreliable-equations",
+      "width": 528,
+      "height": 528,
+      "expectedBytes": 38,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.90506699999969,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.13235199999872,
+          "decoder": "repair equations"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 22.576395000000048,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.44520999999986,
+          "decoder": "repair equations"
+        }
+      ]
+    },
+    {
+      "name": "equations-3",
+      "group": "unreliable-equations",
+      "width": 528,
+      "height": 528,
+      "expectedBytes": 38,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.048075999999128,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.4270460000007,
+          "decoder": "repair equations"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.98860700000114,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.062293999999383,
+          "decoder": "repair equations"
+        }
+      ]
+    },
+    {
+      "name": "equations-4",
+      "group": "unreliable-equations",
+      "width": 528,
+      "height": 528,
+      "expectedBytes": 38,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.0904440000013,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.3177650000016,
+          "decoder": "repair equations"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.924559999999474,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.251420999999027,
+          "decoder": "repair equations"
+        }
+      ]
+    },
+    {
+      "name": "equations-5",
+      "group": "unreliable-equations",
+      "width": 528,
+      "height": 528,
+      "expectedBytes": 38,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.0053740000003,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 21.10358300000007,
+          "decoder": "repair equations"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.611210000000938,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.358797999999297,
+          "decoder": "repair equations"
+        }
+      ]
+    },
+    {
+      "name": "equations-6",
+      "group": "unreliable-equations",
+      "width": 528,
+      "height": 528,
+      "expectedBytes": 38,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 19.516733999998905,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.751828000000387,
+          "decoder": "repair equations"
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 20.55459300000075,
+          "decoder": "repair equations"
+        },
+        {
+          "exact": true,
+          "decoded": true,
+          "ms": 18.279429000000164,
+          "decoder": "repair equations"
+        }
+      ]
+    },
+    {
+      "name": "negative-0",
+      "group": "negative",
+      "width": 240,
+      "height": 240,
+      "expectedBytes": 0,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 12.87814200000139,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 7.470158000000083,
+          "decoder": null
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 18.22186800000054,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 19.303570000000036,
+          "decoder": null
+        }
+      ]
+    },
+    {
+      "name": "negative-1",
+      "group": "negative",
+      "width": 240,
+      "height": 240,
+      "expectedBytes": 0,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 8.978038999999626,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 8.013839999999618,
+          "decoder": null
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 9.681346000001213,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 8.253335999999763,
+          "decoder": null
+        }
+      ]
+    },
+    {
+      "name": "negative-2",
+      "group": "negative",
+      "width": 240,
+      "height": 240,
+      "expectedBytes": 0,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 130.57746299999963,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 123.74719200000072,
+          "decoder": null
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 133.71520600000076,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 126.8533290000014,
+          "decoder": null
+        }
+      ]
+    },
+    {
+      "name": "negative-3",
+      "group": "negative",
+      "width": 240,
+      "height": 240,
+      "expectedBytes": 0,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 129.71214599999985,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 132.63068500000008,
+          "decoder": null
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 129.5577090000006,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 129.52298599999995,
+          "decoder": null
+        }
+      ]
+    },
+    {
+      "name": "negative-4",
+      "group": "negative",
+      "width": 240,
+      "height": 240,
+      "expectedBytes": 0,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 132.10160299999916,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 129.39268400000037,
+          "decoder": null
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 131.7006220000003,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 128.63826700000027,
+          "decoder": null
+        }
+      ]
+    },
+    {
+      "name": "negative-5",
+      "group": "negative",
+      "width": 240,
+      "height": 240,
+      "expectedBytes": 0,
+      "baseline": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 127.62826400000085,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 133.30256700000064,
+          "decoder": null
+        }
+      ],
+      "candidate": [
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 125.52668400000039,
+          "decoder": null
+        },
+        {
+          "exact": true,
+          "decoded": false,
+          "ms": 130.33371599999919,
+          "decoder": null
+        }
+      ]
+    }
+  ],
+  "tracking": [
+    {
+      "name": "baseline",
+      "staticPoseMicrobenchmark": true,
+      "frames": [
+        {
+          "ms": 23.734419999998863,
+          "locateCalls": 1
+        },
+        {
+          "ms": 3.5741419999994832,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.1990569999998115,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.670131000000765,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.335127000000284,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.1911249999993743,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.1551849999996193,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.2201960000002146,
+          "locateCalls": 0
+        }
+      ]
+    },
+    {
+      "name": "candidate",
+      "staticPoseMicrobenchmark": true,
+      "frames": [
+        {
+          "ms": 23.528394000000844,
+          "locateCalls": 1
+        },
+        {
+          "ms": 3.335812999999689,
+          "locateCalls": 0
+        },
+        {
+          "ms": 4.119881000000532,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.3660189999991417,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.248517999998512,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.104836999998952,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.3842299999996612,
+          "locateCalls": 0
+        },
+        {
+          "ms": 3.5673270000006596,
+          "locateCalls": 0
+        }
+      ]
+    }
+  ],
+  "rendering": [
+    {
+      "bytes": 12,
+      "pixelsPerModule": 12,
+      "baseline": [
+        0.23113499999999476,
+        0.1538989999990008,
+        0.14911399999982677,
+        0.15002600000116217
+      ],
+      "candidate": [
+        0.24814400000104797,
+        0.2009730000008858,
+        0.18307199999981094,
+        0.302453999998761
+      ],
+      "width": 396
+    },
+    {
+      "bytes": 165,
+      "pixelsPerModule": 12,
+      "baseline": [
+        0.42952300000069954,
+        0.399954999998954,
+        0.38266400000065914,
+        0.33446900000126334
+      ],
+      "candidate": [
+        0.40816500000073574,
+        0.4566739999991114,
+        0.40773599999920407,
+        0.28479499999957625
+      ],
+      "width": 492
+    },
+    {
+      "bytes": 1200,
+      "pixelsPerModule": 12,
+      "baseline": [
+        2.169727000000421,
+        2.3208059999997204,
+        2.254519000000073,
+        2.3709360000011657
+      ],
+      "candidate": [
+        2.1477759999997943,
+        2.1395620000002964,
+        3.1050190000005387,
+        2.5934520000009798
+      ],
+      "width": 924
+    }
+  ],
+  "summary": [
+    {
+      "group": "clean",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 31.112979500000165,
+      "candidateMedianMs": 30.24773099999993
+    },
+    {
+      "group": "moderate",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 30.365721499999836,
+      "candidateMedianMs": 33.514525999999705
+    },
+    {
+      "group": "small-blurred",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 13.844516500000282,
+      "candidateMedianMs": 13.750953499999923
+    },
+    {
+      "group": "patch-damage",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 208.6709639999999,
+      "candidateMedianMs": 202.35550949999924
+    },
+    {
+      "group": "uneven-light",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 22.683514000000287,
+      "candidateMedianMs": 22.146748000000116
+    },
+    {
+      "group": "pilot-damage",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 26.92561999999998,
+      "candidateMedianMs": 26.468880500000523
+    },
+    {
+      "group": "unreliable-equations",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 19.22505850000016,
+      "candidateMedianMs": 19.305109499999162
+    },
+    {
+      "group": "negative",
+      "cases": 6,
+      "baselineExact": 6,
+      "candidateExact": 6,
+      "baselineMedianMs": 128.5104740000006,
+      "candidateMedianMs": 127.74579800000083
+    }
+  ],
+  "regressions": []
+}

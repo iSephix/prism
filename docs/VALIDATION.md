@@ -28,7 +28,7 @@ The [0.1-to-0.2 paired benchmark](BENCHMARKS.md) records both decoders on identi
 - Test the enhanced path against the hard-only decoder on identical seeded images; enhanced decoding must preserve observed hard-path successes.
 - Erase one set of calibration pilots and corrupt repair glyphs while a whole body block is missing: fallback calibration and confidence-ranked equation subsets recover exact bytes.
 - Change the message at a tracked position and replace the image with a blank: the scanner must return the current verified message or no result, never a cached payload.
-- Drive the actual camera demo with controlled video callbacks and worker replies: duplicate timestamps are skipped, only one decode is outstanding, hardware controls retain capture constraints, and cancellation releases the camera and worker.
+- Drive the actual camera demo with controlled video callbacks and worker replies: identical timestamps and pixels are skipped, changed pixels remain eligible with a stalled media clock, only one decode is outstanding, hardware controls retain capture constraints, and cancellation releases the camera and worker.
 
 These are controlled demonstrations of specific mechanisms. They do not imply that every distortion benefits from every decoder option. Neighboring-cell and sampling refinements remain heuristic. The extra equations may be dependent or unreadable. Header detection remains a prerequisite for the recovery paths.
 
@@ -77,3 +77,36 @@ The [0.1-to-0.3.3 paired synthetic report](benchmarks/results-0.3.3.json) record
 0.1.0 baseline and candidate. It reports no accepted wrong payloads and no lost
 baseline successes in this suite. It is a synthetic regression comparison, not a
 measurement of the user's v0.1 phone session or evidence of general camera superiority.
+
+
+## 0.3.4 phone-report recovery
+
+A private phone report from the 0.3.3 demo recorded six camera sessions. Each
+attempted only frame 1 before freezing; three frozen captures successfully
+recovered a small encrypted print. The exact browser cause is unproven. The
+capture scheduler now runs independently of compositor callbacks and worker
+completion, checks actual pixels as well as media time, and records heartbeats.
+Controlled camera tests exercise a stalled clock, busy-worker pulses, repeated
+frames, pixel-read errors, timeout recovery and cancellation.
+
+The last three retained captures include two clipped views and one complete,
+dense 61×61 print. The 0.3.3 decoder recognizes that complete frame's header but
+fails payload recovery. Local cell registration and pilot alignment recover its
+1194-byte optical body, checked byte-for-byte against the earlier independently
+retained payload. The two clipped views still return no verified result. No
+expected payload, hash, finder coordinates or photograph is embedded in the
+production decoder. Private reports and photographs are excluded from release.
+
+All nine earlier physical cases still recover exact bytes through the browser
+worker. A public synthetic uneven-bend case, using an independent payload and
+low correction, also recovers through local registration; the 0.3.3 baseline
+misses that case on the same host. Replacing its pixels with blank input never
+returns a previous payload. These are tuning and regression checks. A fresh
+phone session is still needed to measure the updated live scanner's behavior.
+
+
+The [0.3.3-to-0.3.4 paired synthetic report](benchmarks/results-0.3.4.json)
+records 48 cases with two alternating trials per decoder, including negative
+images, damaged pilots and inconsistent equations. Both versions pass every
+case, with no accepted wrong payloads or lost baseline successes. Source hashes
+include the geometry module when present.

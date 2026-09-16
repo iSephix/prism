@@ -8,7 +8,7 @@ let code = null,
   request = 0,
   stream = null,
   cameraToken = 0,
-  scanTimer, frameCallback = null, locked = null,
+  scanTimer, locked = null,
   message = '', selectedPayload = null, recoveredPayload = null, payloadURL = null, fileRequest = 0;
 const pending = new Map(),
   options = () => Object.fromEntries(['soft', 'equations', 'spatial', 'refine'].map(k => [k, $(k).checked]));
@@ -209,8 +209,6 @@ function cancelWorker(reason = 'Scan cancelled.') {
 function stop() {
   cameraToken++;
   clearTimeout(scanTimer);
-  if (frameCallback !== null) $('video').cancelVideoFrameCallback?.(frameCallback);
-  frameCallback = null;
   cancelWorker();
   $('camera-controls').hidden = true;
   $('torch').setAttribute('aria-pressed', 'false');
@@ -359,35 +357,43 @@ $('start').onclick = async () => {
     if (token !== cameraToken) return;
     const canvas = document.createElement('canvas'),
       ctx = canvas.getContext('2d', { willReadFrequently: true });
-    let lastTime = -1, captured = 0, failures = 0;
+    scanLog.event('camera-scheduler', { mode: 'timer-pixels', intervalMs: 120 });
+    const probe = document.createElement('canvas'); probe.width = 48; probe.height = 48;
+    const probeContext = probe.getContext('2d', { willReadFrequently: true });
+    let lastTime = -1, lastPixels = null, captured = 0, failures = 0, busy = false, pulses = 0;
+    // Poll independently of video presentation callbacks AND promise completion.
+    // A busy worker owns at most one frame; the heartbeat keeps running while it
+    // works, so a suspended compositor cannot permanently strand the scan loop.
     const schedule = () => {
       if (token !== cameraToken || !stream) return;
-      if (typeof $('video').requestVideoFrameCallback === 'function') {
-        frameCallback = $('video').requestVideoFrameCallback(tick);
-        // Some mobile browsers suspend presentation callbacks when the preview
-        // is off-screen. Keep capture alive, still checking for a fresh frame.
-        scanTimer = setTimeout(tick, 250);
-      } else scanTimer = setTimeout(tick, 40);
+      scanTimer = setTimeout(() => { schedule(); return tick(); }, 120);
     };
-    const tick = async (_now, metadata) => {
-      clearTimeout(scanTimer);
-      if (frameCallback !== null) $('video').cancelVideoFrameCallback?.(frameCallback);
-      frameCallback = null;
+    const tick = async () => {
       if (token !== cameraToken || !stream) return;
       const v = $('video');
-      if (v.readyState < 2 || !v.videoWidth) {
-        schedule();
-        return;
-      }
-      const frameTime = metadata?.mediaTime ?? v.currentTime;
-      if (frameTime === lastTime) { schedule(); return; }
-      lastTime = frameTime;
-      const pass = captured++ % 3;
-      const budget = pass === 0 ? 1800 : 6000;
-      const scale = Math.min(1, [800, 1120, 1800][pass] / Math.max(v.videoWidth, v.videoHeight));
-      const width = Math.round(v.videoWidth * scale), height = Math.round(v.videoHeight * scale);
-      if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+      if (++pulses % 20 === 0) scanLog.event('camera-heartbeat', {
+        busy, attempts: captured, mediaTime: v.currentTime, readyState: v.readyState });
+      if (busy || v.readyState < 2 || !v.videoWidth) return;
+      busy = true;
       try {
+        // Some camera/browser combinations stop updating their presentation clock.
+        // Check actual pixels as well, while continuing to reject repeated frames.
+        probeContext.drawImage(v, 0, 0, 48, 48);
+        const pixels = probeContext.getImageData(0, 0, 48, 48).data;
+        let fingerprint = 2166136261;
+        for (let i = 0; i < pixels.length; i += 4) {
+          fingerprint = Math.imul(fingerprint ^ pixels[i], 16777619);
+          fingerprint = Math.imul(fingerprint ^ pixels[i + 1], 16777619);
+          fingerprint = Math.imul(fingerprint ^ pixels[i + 2], 16777619);
+        }
+        const frameTime = v.currentTime;
+        if (frameTime === lastTime && fingerprint === lastPixels) return;
+        lastTime = frameTime; lastPixels = fingerprint;
+        const pass = captured++ % 3;
+        const budget = pass === 2 ? 1800 : 6000;
+        const scale = Math.min(1, [1120, 1800, 800][pass] / Math.max(v.videoWidth, v.videoHeight));
+        const width = Math.round(v.videoWidth * scale), height = Math.round(v.videoHeight * scale);
+        if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
         const input = ctx.getImageData(0, 0, canvas.width, canvas.height),
           snapshot = new Uint8ClampedArray(input.data);
@@ -395,6 +401,7 @@ $('start').onclick = async () => {
         const result = await decode(input, true, captured, budget);
         if (token !== cameraToken) return;
         failures = 0;
+        scanLog.event('camera-complete', { frame: captured, kind: result.kind });
         if (display(result)) {
           $('photo').width = canvas.width;
           $('photo').height = canvas.height;
@@ -409,11 +416,9 @@ $('start').onclick = async () => {
           scanLog.event('capture-error', { message: error.message });
           $('scan-status').textContent = error.message;
           if (++failures >= 3) { stop(); $('scan-status').textContent = 'Decoder keeps failing. Save a scan report, or try Freeze & read on a new session.'; }
-          else schedule();
         }
         return;
-      }
-      schedule();
+      } finally { busy = false; }
     };
     schedule();
   } catch (error) {

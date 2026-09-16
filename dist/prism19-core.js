@@ -1,4 +1,4 @@
-/*! Prism 19 0.3.3 | Apache-2.0 | See LICENSE and NOTICE. */
+/*! Prism 19 0.3.4 | Apache-2.0 | See LICENSE and NOTICE. */
 (function(){
 const module=undefined,exports=undefined,define=undefined;
 
@@ -1153,7 +1153,7 @@ const module=undefined,exports=undefined,define=undefined;
     const start = performance.now(), deadline = start + (options.maxTimeMs ?? 2200);
     const stats = { locateCalls: 0, candidates: 0, observations: 0, tracked: false,
       locateMs: 0, observeMs: 0, classifyMs: 0, decodeMs: 0,
-      unusableObservations: 0, bestSeparation: 0, headerMatches: 0, geometryCandidates: 0 };
+      unusableObservations: 0, bestSeparation: 0, headerMatches: 0, geometryCandidates: 0, cellRefinements: 0 };
     const hard = { soft: false, equations: false }, advanced = options.soft !== false ||
       options.equations !== false || options.spatial !== false || options.refine !== false;
     const config = { ...options, deadline };
@@ -1209,6 +1209,7 @@ const module=undefined,exports=undefined,define=undefined;
       if (!Number.isInteger(n) || n < 25 || n > 145 || (n - 25) % 4 || typeof location.map !== 'function')
         return null;
       stats.candidates++;
+      if (location.cellRefined) stats.cellRefinements++;
       const obs = observe(location);
       if (!obs) { stats.unusableObservations++; return null; }
       stats.bestSeparation = Math.max(stats.bestSeparation, obs.separation);
@@ -1601,7 +1602,7 @@ const module=undefined,exports=undefined,define=undefined;
   } else root.Prism19 = factory(root.Prism19Core, root.PrismEnvelope, root.PrismPayload, () => root.Prism19Geometry || root.Prism19Locator);
 })(globalThis, function(core, envelope, payload, getDefaultLocator) {
   'use strict';
-  const version = '0.3.3',
+  const version = '0.3.4',
     wireVersion = 3,
     supportedWireVersions = Object.freeze([2, 3]),
     maxTextBytes = 8554,

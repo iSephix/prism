@@ -6,7 +6,7 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 
 function host(frameCallbacks = true, hardware = true) {
   const elements = new Map(), callbacks = new Map(), timers = new Map(), workers = [];
-  let serial = 0, prints = 0;
+  let serial = 0, prints = 0, pixel = 0, readError = false;
   const downloads = [], cameraRequests = [];
   function element() {
     const attributes = new Map(), styles = new Map();
@@ -17,8 +17,8 @@ function host(frameCallbacks = true, hardware = true) {
       toDataURL: () => 'data:image/png;base64,AA==',
       play: async () => {}, pause() {}, load() {}, removeAttribute: k => attributes.delete(k),
       getContext: () => ({ drawImage() {}, putImageData() {},
-        getImageData: () => ({ width: e.width, height: e.height,
-          data: new Uint8ClampedArray(e.width * e.height * 4) }) }) };
+        getImageData: () => { if (readError) throw new Error('Camera pixels unavailable');
+          return { width: e.width, height: e.height, data: new Uint8ClampedArray(e.width * e.height * 4).fill(pixel) }; } }) };
     return e;
   }
   const html = fs.readFileSync(path.join(__dirname, '../examples/index.html'), 'utf8');
@@ -61,15 +61,10 @@ function host(frameCallbacks = true, hardware = true) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../examples/demo.js'), 'utf8'), context);
   function frame(time) {
     $('video').currentTime = time;
-    if (frameCallbacks) {
-      assert.equal(callbacks.size, 1);
-      const [id, fn] = callbacks.entries().next().value; callbacks.delete(id);
-      return fn(0, { mediaTime: time });
-    }
-    const [id, timer] = [...timers].find(([, t]) => t.ms === 40);
+    const [id, timer] = [...timers].find(([, t]) => t.ms === 120);
     timers.delete(id); return timer.fn();
   }
-  return { $, callbacks, timers, workers, frame, track, constraints, downloads, cameraRequests, prints: () => prints };
+  return { $, callbacks, timers, workers, frame, track, constraints, downloads, cameraRequests, setPixels: value => pixel = value, failRead: value => readError = value, prints: () => prints };
 }
 
 test('camera cycles three resolutions after completion without queuing or fusing stale frames', async () => {
@@ -81,8 +76,8 @@ test('camera cycles three resolutions after completion without queuing or fusing
     assert.equal(h.callbacks.size, 0, 'No queued frame while the worker is busy');
     const request = worker.messages.at(-1);
     assert.equal(request.options.frameId, frame);
-    assert.equal(request.options.maxTimeMs, frame % 3 === 1 ? 1800 : 6000);
-    assert.equal(request.image.width, [800, 1120, 1800][(frame - 1) % 3]);
+    assert.equal(request.options.maxTimeMs, frame % 3 === 0 ? 1800 : 6000);
+    assert.equal(request.image.width, [1120, 1800, 800][(frame - 1) % 3]);
     assert.equal(request.options.diagnostics, true);
     worker.reply({ kind: 'none' }); await pending;
     const count = worker.messages.length;
@@ -98,27 +93,41 @@ test('camera cycles three resolutions after completion without queuing or fusing
   assert.equal(h.$('scan-status').textContent, 'Camera stopped.');
 });
 
-test('camera continues scanning when presentation callbacks stall, without queuing duplicate captures', async () => {
+test('camera heartbeat survives stalled presentation callbacks and media clock without queuing frames', async () => {
   const h = host(); await h.$('start').onclick();
-  const worker = h.workers[0];
-  h.$('video').currentTime = 1;
-  const [id, fallback] = [...h.timers].find(([, t]) => t.ms === 250);
-  h.timers.delete(id);
-  const pending = fallback.fn();
-  assert.equal(h.callbacks.size, 0, 'The presentation callback is cancelled while the worker owns the frame');
-  assert.equal(worker.messages.at(-1).options.frameId, 1);
-  assert.equal([...h.timers.values()].some(t => t.ms === 250), false);
-  worker.reply({ kind: 'none' }); await pending;
-  assert.equal(h.callbacks.size, 1);
+  const worker = h.workers[0], pending = h.frame(1);
+  assert.equal(h.callbacks.size, 0, 'Capture never depends on compositor callbacks');
   const count = worker.messages.length;
+  for (let i = 0; i < 22; i++) await h.frame(1);
+  assert.equal(worker.messages.length, count, 'Heartbeat cannot queue captures while decoding');
+  worker.reply({ kind: 'none' }); await pending;
   await h.frame(1);
-  assert.equal(worker.messages.length, count, 'The timer and presentation callback cannot fuse one frame twice');
-  const next = h.frame(2);
+  assert.equal(worker.messages.length, count, 'Identical pixels and media time are skipped');
+  h.setPixels(20);
+  const next = h.frame(1);
+  assert.equal(worker.messages.at(-1).options.frameId, 2, 'Changed pixels work with a stalled media clock');
   worker.reply({ kind: 'prism19', text: 'Previously printed code', ms: 10, frames: 1 }); await next;
   assert.equal(h.$('result').textContent, 'Previously printed code');
   assert.equal(h.track.readyState, 'ended');
   assert.equal(h.callbacks.size, 0);
   assert.equal(h.timers.size, 0);
+  h.$('save-report').onclick();
+  const report = JSON.parse(await h.downloads.at(-1).text());
+  assert.ok(report.events.some(e => e.type === 'camera-heartbeat' && e.busy && e.attempts === 1));
+  assert.ok(report.events.some(e => e.type === 'camera-scheduler' && e.mode === 'timer-pixels'));
+});
+
+test('failed pixel probes are reported, retried and eventually stop cleanly', async () => {
+  const h = host(); await h.$('start').onclick(); h.failRead(true);
+  await h.frame(1);
+  assert.match(h.$('scan-status').textContent, /pixels unavailable/);
+  assert.equal(h.track.readyState, 'live');
+  await h.frame(2); await h.frame(3);
+  assert.equal(h.track.readyState, 'ended');
+  assert.equal(h.timers.size, 0);
+  h.$('save-report').onclick();
+  const report = JSON.parse(await h.downloads.at(-1).text());
+  assert.equal(report.events.filter(e => e.type === 'capture-error').length, 3);
 });
 
 test('older partial Prism layers keep the camera running until their complete payload is recovered', async () => {

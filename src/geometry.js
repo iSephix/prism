@@ -168,8 +168,29 @@
       keep = residual.map(r => r < cutoff);
     }
     const photometryMap = locator.mapping({ ...location.raw, dimension: n });
-    return { dimension: n, photometryMap, map: (x, y) => { const b = basis(x / n, y / n); return { x: dot(b, cx), y: dot(b, cy) }; },
-      raw: { ...location.raw, dimension: n } };
+    const map = (x, y) => { const b = basis(x / n, y / n); return { x: dot(b, cx), y: dot(b, cy) }; };
+    // The smooth fit can reject real bends as outliers. Retain the independently
+    // joined cell centers as a bounded residual field, including those bends.
+    // Only geometry is retained: tracked poses must always sample fresh pixels.
+    const dx = new Float32Array(n * n), dy = new Float32Array(n * n), counts = new Uint16Array(n * n);
+    for (const p of cells) {
+      const x = p.cx - .5, y = p.cy - .5;
+      if (x < 0 || y < 0 || x >= n || y >= n) continue;
+      const base = map(p.cx, p.cy), a = p.x - base.x, b = p.y - base.y;
+      if (Math.hypot(a, b) > pitch * 1.5) continue;
+      const cell = y * n + x; dx[cell] += a; dy[cell] += b; counts[cell]++;
+    }
+    for (let i = 0; i < counts.length; i++) if (counts[i]) { dx[i] /= counts[i]; dy[i] /= counts[i]; }
+    const localMap = (x, y) => {
+      const base = map(x, y), u = Math.max(0, Math.min(n - 1, x - .5)), v = Math.max(0, Math.min(n - 1, y - .5));
+      const ix = Math.min(n - 2, Math.floor(u)), iy = Math.min(n - 2, Math.floor(v)), fx = u - ix, fy = v - iy;
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) {
+        const cell = (iy + j) * n + ix + i, w = (i ? fx : 1 - fx) * (j ? fy : 1 - fy);
+        base.x += dx[cell] * w; base.y += dy[cell] * w;
+      }
+      return base;
+    };
+    return { dimension: n, photometryMap, map, localMap, raw: { ...location.raw, dimension: n } };
   }
   const templates = A.symbols.map(s => {
     const a = [];
@@ -190,18 +211,44 @@
     }
     return 255 - Math.min(r, g, b);
   }
+  function pilotCost(image, location, cell, symbol, dx = 0, dy = 0) {
+    let sm = 0, sv = 0, smm = 0, svv = 0, smv = 0;
+    for (const f of templates[symbol]) {
+      const v = darkness(image, location.map(cell % location.dimension + f.u + dx,
+        Math.floor(cell / location.dimension) + f.v + dy));
+      sm += f.m; sv += v; smm += f.m * f.m; svv += v * v; smv += f.m * v;
+    }
+    const variance = smm - sm * sm / 49, cov = smv - sm * sv / 49;
+    return 1 - Math.max(0, cov) ** 2 / Math.max(1, variance * (svv - sv * sv / 49));
+  }
   function quality(image, location) {
-    let total = 0;
-    C.layout(location.dimension).pilots.forEach((cell, i) => {
-      let sm = 0, sv = 0, smm = 0, svv = 0, smv = 0;
-      for (const f of templates[i % 19]) {
-        const v = darkness(image, location.map(cell % location.dimension + f.u, Math.floor(cell / location.dimension) + f.v));
-        sm += f.m; sv += v; smm += f.m * f.m; svv += v * v; smv += f.m * v;
+    return C.layout(location.dimension).pilots.reduce((sum, cell, i) =>
+      sum + pilotCost(image, location, cell, i % 19), 0) / 38;
+  }
+  function alignPilots(image, location, deadline) {
+    const n = location.dimension, shifts = new Map();
+    const pilots = C.layout(n).pilots;
+    for (let i = 0; i < pilots.length; i++) {
+      if (expired(deadline)) return null;
+      const cell = pilots[i]; let best = pilotCost(image, location, cell, i % 19), shift = [0, 0];
+      for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
+        const cost = pilotCost(image, location, cell, i % 19, x / 10, y / 10);
+        if (cost < best) { best = cost; shift = [x / 10, y / 10]; }
       }
-      const variance = smm - sm * sm / 49, cov = smv - sm * sv / 49;
-      total += 1 - Math.max(0, cov) ** 2 / Math.max(1, variance * (svv - sv * sv / 49));
-    });
-    return total / 38;
+      shifts.set(cell, shift);
+    }
+    const map = location.map;
+    return { ...location, map: (x, y) => {
+      const shift = shifts.get(Math.floor(y) * n + Math.floor(x));
+      return map(x + (shift?.[0] || 0), y + (shift?.[1] || 0));
+    } };
+  }
+  function* fittedPoses(image, fitted, deadline) {
+    const { localMap, ...base } = fitted;
+    const local = alignPilots(image, { ...base, map: localMap, cellRefined: true, photometryMap: undefined }, deadline);
+    if (local && quality(image, local) < quality(image, base) * .85) yield local;
+    yield { ...base, photometryMap: undefined };
+    yield base;
   }
   function* searchOne(image, deadline, found = locator.patterns(image.data, image.width, image.height)) {
     if (!found || expired(deadline)) return;
@@ -235,8 +282,7 @@
       yield pose;
       const fitted = fitComponents(image, pose, deadline);
       if (fitted && quality(image, fitted) < Math.min(.7, pose.quality)) {
-        yield { ...fitted, photometryMap: undefined };
-        yield fitted;
+        yield* fittedPoses(image, fitted, deadline);
       }
     }
     // Finder widths can misestimate a dense print's dimension. The connected cell
@@ -246,8 +292,7 @@
       if (candidates.some(p => p.raw.topLeft === pose.raw.topLeft && p.quality < .45)) continue;
       const fitted = fitComponents(image, pose, deadline);
       if (fitted && quality(image, fitted) < .7) {
-        yield { ...fitted, photometryMap: undefined };
-        yield fitted;
+        yield* fittedPoses(image, fitted, deadline);
       }
     }
   }

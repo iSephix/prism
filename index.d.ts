@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-export const version: '0.3.3';
+export const version: '0.3.4';
 export const wireVersion: 3;
 export const supportedWireVersions: readonly [2, 3];
 export const maxTextBytes: 8554;
@@ -29,7 +29,7 @@ export interface ScanOptions {
 export interface ScanDiagnostics {
   locateCalls: number; candidates: number; observations: number; tracked: boolean;
   locateMs: number; observeMs: number; classifyMs: number; decodeMs: number;
-  unusableObservations?: number; bestSeparation?: number; headerMatches?: number; geometryCandidates?: number;
+  unusableObservations?: number; bestSeparation?: number; headerMatches?: number; geometryCandidates?: number; cellRefinements?: number;
 }
 export interface ScanMetadata { diagnostics?: ScanDiagnostics; wireVersion?: 2 | 3; typed?: boolean; }
 export interface DecodedResult extends ScanMetadata { kind: 'prism19'; mode: 'p19'; text: string; bytes: number; envelope: number[]; encrypted: false; verified: true; checksum: string; ms: number; decoder: string; corrected: number; repaired: number; equations: number; frames: number; grid: number; }
