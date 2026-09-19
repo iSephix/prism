@@ -8,6 +8,11 @@ It requires a Prism 19-compatible scanner. Existing QR-only camera readers canno
 
 This is the **0.3.4 reference implementation** of **Optical Formats 2 and 3, Community Draft 1**. Format 2 preserves codes produced by the original Prism 19 experiment. It is a proposed community specification; it has not been adopted by a standards organization. Its nominal alphabet capacity is 4.248 bits per cell before overhead. Useful density depends on camera resolution, lighting and correction settings.
 
+This branch adds an isolated **Experimental** tab for base 32, 64 and 128 codes.
+The validated 0.3.4 scanner is preserved on `stable/validated-0.3.4`; its optical
+and camera implementations are unchanged here. See the [PX-1 experiment](experiments/higher-base/README.md)
+for its format, measured limitations and equal-area comparisons.
+
 Version 0.3 unlocks up to **8,554 text bytes** or **8,550 raw file bytes** at L correction, and adds typed images, audio, JSON, calculations, links and contacts. All types can be encrypted. Existing format-2 codes remain readable; new content uses format 3. The default Q level holds 6,273 body bytes. See [payloads and capacity](docs/PAYLOADS.md), the [format-3 specification](spec/FORMAT3.md), and the earlier [decoder benchmarks](docs/BENCHMARKS.md).
 
 ## Try it
@@ -17,6 +22,7 @@ Requires Node.js 22 or newer. No package installation or build step is needed fr
 ```sh
 git clone https://github.com/iSephix/prism.git
 cd prism
+git switch experiment/higher-bases
 npm run demo
 ```
 

@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.mode-tabs{max-width:1300px;margin:0 auto;display:flex;gap:8px;padding:14px 30px 0}.mode-tabs a{padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px}.mode-tabs a[aria-current=page]{background:#18273b;color:white}.mode-tabs a:not([aria-current]){background:#e9eff8}@media(max-width:800px){.mode-tabs{padding-left:18px;padding-right:18px}}@media print{.mode-tabs{display:none!important}}

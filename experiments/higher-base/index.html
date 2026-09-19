@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#152237"><title>Prism · Higher-base experiments</title>
+<link rel="stylesheet" href="../../examples/style.css"><link rel="stylesheet" href="lab.css">
+<script defer src="../../dist/prism19.js"></script><script defer src="../../examples/diagnostics.js"></script>
+<script defer src="alphabet.js"></script><script defer src="profiles.js"></script><script defer src="field.js"></script><script defer src="geometry.js"></script><script defer src="codec.js"></script><script defer src="optics.js"></script><script defer src="benchmark.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<header><a href="../../examples/">prism <strong>lab</strong></a><span>PX-1 · experimental format</span></header>
+<nav class="mode-tabs" aria-label="Scanner mode"><a href="../../examples/">Stable scanner</a><a href="./" aria-current="page">Experimental</a></nav>
+<main>
+<div class="intro"><h1>More symbols. More useful bytes?</h1><p>Explore 32, 64 and 128 symbols. Generate a code, print it, and test the same physical area. These codes use their own experimental reader.</p></div>
+<div class="workspace">
+<section aria-labelledby="make-title"><div class="section-label">GENERATE &amp; PRINT</div><h2 id="make-title">Try a higher base</h2>
+<div class="row"><div><label for="base">Alphabet</label><select id="base"><option value="32">Base 32 · 5 bits/cell</option><option value="64">Base 64 · 6 bits/cell</option><option value="128">Base 128 · 7 bits/cell</option></select></div><div><label for="ecc">Correction</label><select id="ecc"><option>Q</option><option>H</option><option>M</option><option>L</option></select></div></div>
+<label for="message">Message</label><textarea id="message" rows="3" spellcheck="false">More useful information in the same printed area.</textarea>
+<div class="row"><div><label for="payload-size">Test payload</label><select id="payload-size"><option value="128">128 bytes</option><option value="512" selected>512 bytes</option><option value="1024">1,024 bytes</option><option value="2048">2,048 bytes</option><option value="4096">4,096 bytes</option></select></div><div class="bottom"><button id="fill" class="secondary">Use test payload</button></div></div>
+<div class="row"><div><label for="print-mm">Printed width (mm)</label><input id="print-mm" type="number" min="20" max="200" step="5" value="60"></div><div><label for="grid">Cell grid</label><select id="grid"><option value="0">Smallest that fits</option><option value="61">61 × 61</option><option value="93">93 × 93</option><option value="145">145 × 145</option></select></div></div>
+<p id="encode-status" class="status" role="status"></p><div id="code" aria-label="Experimental code"></div><p id="code-meta" class="note"></p>
+<div class="buttons"><button id="svg">Download SVG</button><button id="print" class="secondary">Print</button><button id="read-generated" class="secondary">Read generated image</button></div>
+<p class="note">Printed width includes the white margin. Print at 100% scale. Experimental codes are separate from existing Prism 19 prints.</p>
+</section>
+<section aria-labelledby="read-title"><div class="section-label">CAMERA TEST</div><h2 id="read-title">Read the experiment</h2>
+<p id="reader-hint">The reader uses the alphabet selected on the left.</p>
+<div class="camera"><video id="video" playsinline muted hidden></video><canvas id="photo" hidden></canvas><div id="camera-idle">Camera is off</div></div>
+<div class="buttons"><button id="start">Start camera</button><button id="stop" class="secondary" hidden>Stop</button><button id="freeze" class="secondary" hidden>Freeze &amp; read</button><button id="choose-image" class="secondary">Choose image</button></div><input id="image-file" type="file" accept="image/*" hidden>
+<p id="scan-status" class="status" role="status">Ready to scan</p><pre id="result" hidden></pre><button id="save-bytes" class="secondary" hidden>Save recovered bytes</button>
+<div class="scan-report"><button id="save-report" class="secondary">Save scan report</button><label class="check"><input id="include-frames" type="checkbox" checked> Include up to 3 recent frames</label><label for="report-note">What happened?</label><textarea id="report-note" rows="2" maxlength="2000" placeholder="Printed at 60 mm, good light…"></textarea><p class="note">Reports stay on your device until you download them. Frames may reveal the printed message. Decoded text is excluded from log metadata.</p></div>
+</section>
+</div>
+<section class="comparison" aria-labelledby="compare-title"><div class="section-label">SAME AREA, SAME CHANNEL</div><h2 id="compare-title">Find the useful density</h2>
+<p>Nominal capacity is only the starting point. The table includes calibration and error-correction overhead for a fixed 61 × 61 grid at your chosen print width.</p>
+<div class="table-scroll"><table><thead><tr><th>Alphabet</th><th>Raw gain/cell</th><th>Payload ceiling</th><th>Ceiling bytes/mm²</th><th>Body code rate</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
+<p class="note">These ceilings are encoding limits, not proven scan densities. A raw cell-size increase of just 8.5% cancels base 32’s nominal advantage over 19; for base 64 it is 18.8%. Higher bases also need more calibration cells. Correction labels have similar, not identical, code rates.</p>
+<div class="benchmark-controls"><div><label for="channel">Simulated camera</label><select id="channel"><option value="print">Moderate blur &amp; tilt</option><option value="difficult">More blur &amp; color loss</option><option value="grayscale">Grayscale conversion</option><option value="clean">Clean render</option></select></div><div><label for="pixels">Pixels across printed area</label><select id="pixels"><option value="300">300 px</option><option value="420" selected>420 px</option><option value="640">640 px</option><option value="900">900 px</option></select></div><div class="bottom"><button id="benchmark">Run comparison</button><button id="cancel-benchmark" class="secondary" hidden>Cancel</button></div></div>
+<p id="benchmark-status" class="status" role="status">32 trials: four payload sizes, two fixed seeds, four alphabets. Each reader gets only image pixels and the same time budget.</p>
+<div class="table-scroll"><table><thead><tr><th>Alphabet</th><th>Verified trials</th><th>Largest size passing both seeds</th><th>Verified bytes/mm² at that size</th></tr></thead><tbody id="benchmark-rows"><tr><td colspan="4">Run a comparison to collect results.</td></tr></tbody></table></div>
+<button id="save-benchmark" class="secondary" disabled>Download comparison</button>
+<p class="note">Synthetic results are not physical validation. “Largest passing size” refers only to the four tested sizes. No QR or JAB advantage is established here. Camera tests, printer response and scan time decide which profile is useful.</p>
+</section>
+<details class="alphabet"><summary>Inspect the selected symbols and closest pairs</summary><p id="alphabet-info" class="note"></p><div id="closest-pairs"></div><div id="alphabet"></div></details>
+</main><footer><span>Stable Prism 19 is pinned to the validated baseline.</span><a href="README.md">Experiment &amp; method</a><a href="stable-baseline.json">Baseline record</a></footer>
+</body></html>

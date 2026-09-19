@@ -1,0 +1,26 @@
+{
+  "softwareVersion": "0.3.4",
+  "commit": "d6f17d2a2719d946a4ea718258532d242343c4ab",
+  "branch": "stable/validated-0.3.4",
+  "confirmedByUser": "2026-09-19",
+  "evidence": "User reports great live performance and one successful black-and-white edge case. This does not establish general monochrome support.",
+  "sha256": {
+    "src/alphabet19.js": "3a9417dfb3bc9a748c2e2108bf5b40c5256724e2555bb1e889b182b6d89731c8",
+    "src/api.js": "56532061a43677d3f69031b69b4e0a64fc9ab6da0cab5bd977a93689b68de194",
+    "src/codec.js": "06dcd25cf29d1aa185d75ddab85d468b19ea8c098d92096afe5fe442b3dd305b",
+    "src/gf19.js": "342a8583a5eb90b3c627558980759df7e6b11a5250fdfcc95ee90afa079784e6",
+    "src/geometry.js": "7e3af29c0a2d51f2657823ebc9e21196b92a81dfa6b4568e53bfc1063ba1a6a0",
+    "src/envelope.js": "aee0c52acb2e407c24d1cb8ad94ce50417b5e00d4ffc5cf632e0898536f2df4f",
+    "src/payload.js": "f83b0eed718f6c277cea324d2fde7085a5c57d2d6d4d6c06bdfd50d26ac6a24e",
+    "dist/prism19.js": "02c01db72fe9aee3cda2953fbb3676a5f94de2c2a542918a5d26a30468cd4ac6",
+    "dist/prism19-core.js": "4715f3610d08a90de51783297f1ab5a8d7e34f012ddddcc9d4ea6698f9049eb0",
+    "examples/demo.js": "0b87e1346b95be5b7d21e97a9c6b56a4dafb00f0f2a90dc2e45b315f0a2914d6",
+    "examples/worker.js": "d727a27bd103738dbbe16f2d434fafc97d9f4ddf8c6795a7dba36a724c73f258",
+    "examples/diagnostics.js": "6a2f0866a24f96ee0f8e01f6cb0ce348242a79b0fe6a89ba30f29a8778e110ef",
+    "examples/style.css": "8852b5cd3fcf17d254c58318464087d19acc850b7c0017d70238d56110e99c36",
+    "spec/vectors.json": "d74906009be7f14375c0793e1d99761810e9a2b7304e15cbc8a85b197ddb56e5",
+    "spec/vectors-v3.json": "1d2ff5b6ab8c54bccff397e485ce00614b3503158df9ca1bd18427f301708638",
+    "src/crc32.js": "5791caa91a8861c682036d636c1a0942f28efb92a3bdc7f436bcebb9697f5380",
+    "vendor/jsqr-locator.js": "cc0377c8ed4e8ab17a4ceccedd09bfe51e328bb4225047655cf479ad520cd018"
+  }
+}

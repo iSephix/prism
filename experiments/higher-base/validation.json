@@ -1,0 +1,75 @@
+{
+  "schema": "prism-px-validation",
+  "version": 1,
+  "format": "PX-1",
+  "date": "2026-09-19",
+  "physicalTrial": false,
+  "stableCommit": "d6f17d2a2719d946a4ea718258532d242343c4ab",
+  "sha256": {
+    "alphabet.js": "0a1affb89c0bc5f2a3713b858a10ee55ff47acde55914f16090ce6b9713ff08d",
+    "profiles.js": "606ace8a38a7588ee70691df6ec19c6e83c8115b1dca711d95e8c223fcca6189",
+    "field.js": "3207542555f969e223419df317ea09f623faccbb58cfc060b048030ce0e4f8fe",
+    "geometry.js": "e1000c5bafc9b181fc5cd69408e83bdf7abbf6866c0396e41cdfa168b650c272",
+    "codec.js": "97e60adf480e6e4f9d592e95f550bf1f20344fb109760091509f9f1a7057809c",
+    "optics.js": "8d44639b561777dd8490ef6ed2e3fb40a135fb097cafe46e54ee15fbcf3b774b",
+    "benchmark.js": "21ad17fbc4518df25ff92520fb2260a117561deb5263cd4327e12ea35c656837"
+  },
+  "evidence": {
+    "automatedTests": 61,
+    "syntheticTrials": 64,
+    "acceptedWrongPayloads": 0,
+    "independentSVGRenderer": "Inkscape",
+    "svgPixels": 900,
+    "svgPayload": "Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. Independent vector renderer. ",
+    "svgResults": [
+      {
+        "base": 32,
+        "exact": true,
+        "ms": 132.162333,
+        "diagnostics": {
+          "base": 32,
+          "candidates": 1,
+          "headers": 1,
+          "cellRefinements": 0,
+          "observeMs": 10.005252999999925,
+          "classifyMs": 15.161786000000006,
+          "decodeMs": 2.856351000000018
+        }
+      },
+      {
+        "base": 64,
+        "exact": true,
+        "ms": 101.80433900000003,
+        "diagnostics": {
+          "base": 64,
+          "candidates": 1,
+          "headers": 1,
+          "cellRefinements": 0,
+          "observeMs": 10.037119999999959,
+          "classifyMs": 11.794080000000122,
+          "decodeMs": 1.1219249999999192
+        }
+      },
+      {
+        "base": 128,
+        "exact": true,
+        "ms": 217.1678119999999,
+        "diagnostics": {
+          "base": 128,
+          "candidates": 1,
+          "headers": 1,
+          "cellRefinements": 0,
+          "observeMs": 12.747076000000106,
+          "classifyMs": 21.211475999999948,
+          "decodeMs": 100.27813900000001
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "No physical higher-base trials have been collected yet.",
+    "Two seeds per setting are insufficient to estimate field reliability.",
+    "Stress-run timings overlapped other local tests.",
+    "Codec source hashes include the SVG compatibility fix after the raster-only simulations."
+  ]
+}
